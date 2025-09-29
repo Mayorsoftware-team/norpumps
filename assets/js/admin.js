@@ -1,0 +1,1 @@
+jQuery(function($){ /* admin logic inline en render_admin() */ });
