@@ -13,10 +13,16 @@
 .norpumps-filters .np-checklist .depth-1{ padding-left:12px; opacity:.95 }
 .norpumps-filters .np-checklist .depth-2{ padding-left:24px; opacity:.9 }
 .norpumps-filters .np-all{ display:block; margin:4px 0 10px; font-weight:600; }
-.np-price__slider{ position:relative; height:30px; }
-.np-price__slider input[type=range]{ position:absolute; left:0; right:0; width:100%; pointer-events:none; -webkit-appearance:none; background:transparent; height:30px; }
-.np-price__slider input::-webkit-slider-thumb{ -webkit-appearance:none; pointer-events:auto; width:16px; height:16px; border-radius:50%; background:#0f5b62; border:2px solid #fff; box-shadow:0 0 0 2px #0f5b62; }
-.np-price__slider input::-moz-range-thumb{ pointer-events:auto; width:16px; height:16px; border-radius:50%; background:#0f5b62; border:2px solid #fff; }
+.np-price__slider{ position:relative; height:30px; --np-track-bg:#d7dde5; --np-track-active:#0f5b62; --min:0%; --max:100%; }
+.np-price__slider::before,
+.np-price__slider::after{ content:""; position:absolute; left:12px; right:12px; height:4px; top:50%; transform:translateY(-50%); border-radius:999px; pointer-events:none; }
+.np-price__slider::before{ background:var(--np-track-bg); z-index:1; }
+.np-price__slider::after{ background:linear-gradient(to right, transparent 0, transparent var(--min), var(--np-track-active) var(--min), var(--np-track-active) var(--max), transparent var(--max), transparent 100%); z-index:2; transition:background .15s ease; }
+.np-price__slider input[type=range]{ position:absolute; left:0; right:0; width:100%; pointer-events:none; -webkit-appearance:none; background:transparent; height:30px; margin:0; z-index:3; }
+.np-price__slider input::-webkit-slider-thumb{ -webkit-appearance:none; pointer-events:auto; width:16px; height:16px; border-radius:50%; background:#0f5b62; border:2px solid #fff; box-shadow:0 0 0 2px #0f5b62; cursor:pointer; }
+.np-price__slider input::-moz-range-thumb{ pointer-events:auto; width:16px; height:16px; border-radius:50%; background:#0f5b62; border:2px solid #fff; cursor:pointer; }
+.np-price__slider input::-webkit-slider-runnable-track{ background:transparent; height:4px; }
+.np-price__slider input::-moz-range-track{ background:transparent; height:4px; }
 .np-price__labels{ display:flex; justify-content:space-between; font-size:12px; color:#333; margin-top:8px; }
 .np-grid{ display:grid; gap:28px; }
 .np-grid[data-columns="2"]{ grid-template-columns: repeat(2,minmax(0,1fr)); }

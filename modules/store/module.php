@@ -95,6 +95,7 @@ class NorPumps_Modules_Store {
         wp_send_json_success($out);
     }
     public function shortcode_store($atts){
+        $raw_atts = $atts;
         $atts = shortcode_atts([
             'columns'=>4,
             'filters'=>'price,cat',
@@ -108,6 +109,21 @@ class NorPumps_Modules_Store {
             $parts = array_map('trim', explode(':',$chunk,2));
             if (count($parts)==2){ $label = sanitize_text_field($parts[0]); $slug = sanitize_title($parts[1]); if ($slug) $groups[]=['label'=>$label?:$slug,'slug'=>$slug]; }
         }
+        list($store_min, $store_max) = $this->get_price_bounds();
+        if ($store_min===null || $store_max===null){
+            $store_min = floatval($atts['price_min']);
+            $store_max = floatval($atts['price_max']);
+        }
+        if ($store_max < $store_min){ $store_max = $store_min; }
+        $initial_min = array_key_exists('price_min', $raw_atts) ? floatval($raw_atts['price_min']) : $store_min;
+        $initial_max = array_key_exists('price_max', $raw_atts) ? floatval($raw_atts['price_max']) : $store_max;
+        $initial_min = max($store_min, min($store_max, $initial_min));
+        $initial_max = max($store_min, min($store_max, $initial_max));
+        if ($initial_min > $initial_max){ $initial_min = $store_min; $initial_max = $store_max; }
+        $price_slider_min = $store_min;
+        $price_slider_max = $store_max;
+        $price_current_min = $initial_min;
+        $price_current_max = $initial_max;
         ob_start();
         $filters_arr = array_filter(array_map('trim', explode(',', $atts['filters'])));
         include __DIR__.'/templates/store.php';
@@ -132,14 +148,33 @@ class NorPumps_Modules_Store {
         }
         $min = isset($_REQUEST['min_price']) ? floatval($_REQUEST['min_price']) : null;
         $max = isset($_REQUEST['max_price']) ? floatval($_REQUEST['max_price']) : null;
-        if ($min !== null || $max !== null){ $args['min_price']=$min; $args['max_price']=$max; }
+        if ($min !== null) $args['min_price'] = $min;
+        if ($max !== null) $args['max_price'] = $max;
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
         return $args;
     }
     public function ajax_query(){
         check_ajax_referer('norpumps_store','nonce');
         $args = $this->build_wc_query_from_request();
-        $products = wc_get_products($args);
+        $query_args = $args;
+        $query_args['paginate'] = true;
+        $result = wc_get_products($query_args);
+        $products = is_array($result) && isset($result['products']) ? $result['products'] : (array)$result;
+        $total = is_array($result) && isset($result['total']) ? intval($result['total']) : count($products);
+        $max_pages = is_array($result) && isset($result['max_num_pages']) ? intval($result['max_num_pages']) : 1;
+        $max_pages = max(0, $max_pages);
+        $current_page = max(1, intval(norpumps_array_get($args,'page',1)));
+        if ($max_pages === 0){
+            $current_page = 1;
+        } elseif ($current_page>$max_pages){
+            $current_page = $max_pages;
+            $args['page'] = $current_page;
+            $query_args['page'] = $current_page;
+            $result = wc_get_products($query_args);
+            $products = is_array($result) && isset($result['products']) ? $result['products'] : (array)$result;
+            $total = is_array($result) && isset($result['total']) ? intval($result['total']) : count($products);
+            $max_pages = is_array($result) && isset($result['max_num_pages']) ? intval($result['max_num_pages']) : $max_pages;
+        }
         ob_start();
         foreach ($products as $product){
             $post_object = get_post($product->get_id());
@@ -147,6 +182,21 @@ class NorPumps_Modules_Store {
             include __DIR__.'/templates/card.php';
         }
         wp_reset_postdata();
-        wp_send_json_success([ 'html'=>ob_get_clean(), 'args'=>$args ]);
+        $pagination = [
+            'current'=>$current_page,
+            'total'=>max(1, $max_pages),
+            'total_items'=>$total,
+        ];
+        wp_send_json_success([ 'html'=>ob_get_clean(), 'pagination'=>$pagination, 'args'=>$args ]);
+    }
+    private function get_price_bounds(){
+        global $wpdb;
+        $post_types = array_map('esc_sql', ['product','product_variation']);
+        $types_sql = "'".implode("','", $post_types)."'";
+        $base_sql = " FROM {$wpdb->postmeta} pm INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID WHERE pm.meta_key = %s AND pm.meta_value <> '' AND pm.meta_value IS NOT NULL AND p.post_status = 'publish' AND p.post_type IN ($types_sql)";
+        $min = $wpdb->get_var($wpdb->prepare("SELECT MIN(pm.meta_value+0)".$base_sql, '_price'));
+        $max = $wpdb->get_var($wpdb->prepare("SELECT MAX(pm.meta_value+0)".$base_sql, '_price'));
+        if ($min===null || $max===null){ return [null, null]; }
+        return apply_filters('norpumps_store_price_bounds', [floatval($min), floatval($max)]);
     }
 }
