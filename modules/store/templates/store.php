@@ -1,11 +1,20 @@
 <?php if (!defined('ABSPATH')) { exit; } ?>
 <?php
-$price_min = isset($atts['price_min']) ? floatval($atts['price_min']) : 0;
-$price_max = isset($atts['price_max']) ? floatval($atts['price_max']) : 10000;
+$price_decimals = isset($price_decimals) ? intval($price_decimals) : wc_get_price_decimals();
+$price_step = isset($price_step) ? $price_step : pow(10, max(0, $price_decimals) * -1);
+$price_min = isset($price_min) ? floatval($price_min) : (isset($atts['price_min']) ? floatval($atts['price_min']) : 0);
+$price_max = isset($price_max) ? floatval($price_max) : (isset($atts['price_max']) ? floatval($atts['price_max']) : $price_min);
+if ($price_max < $price_min) $price_max = $price_min;
 $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
 if (!isset($filters_arr)) $filters_arr = [];
+$per_page = isset($per_page) ? intval($per_page) : 12;
+$price_min_attr = wc_format_decimal($price_min, $price_decimals);
+$price_max_attr = wc_format_decimal($price_max, $price_decimals);
+$price_step_attr = wc_format_decimal($price_step, $price_decimals);
+$price_min_label = wp_strip_all_tags( wc_price($price_min) );
+$price_max_label = wp_strip_all_tags( wc_price($price_max) );
 ?>
-<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>">
+<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($per_page); ?>">
   <div class="norpumps-store__header">
     <div class="norpumps-store__orderby">
       <label><?php esc_html_e('Ordenar…','norpumps'); ?></label>
@@ -29,14 +38,14 @@ if (!isset($filters_arr)) $filters_arr = [];
         <div class="np-filter__head"><?php esc_html_e('PRECIO','norpumps'); ?></div>
         <div class="np-filter__body">
           <div class="np-price">
-            <div class="np-price__slider" data-min="<?php echo esc_attr($price_min); ?>" data-max="<?php echo esc_attr($price_max); ?>">
-              <input type="range" class="np-range-min" min="<?php echo esc_attr($price_min); ?>" max="<?php echo esc_attr($price_max); ?>" value="<?php echo esc_attr($price_min); ?>">
-              <input type="range" class="np-range-max" min="<?php echo esc_attr($price_min); ?>" max="<?php echo esc_attr($price_max); ?>" value="<?php echo esc_attr($price_max); ?>">
+            <div class="np-price__slider" data-min="<?php echo esc_attr($price_min_attr); ?>" data-max="<?php echo esc_attr($price_max_attr); ?>">
+              <input type="range" class="np-range-min" min="<?php echo esc_attr($price_min_attr); ?>" max="<?php echo esc_attr($price_max_attr); ?>" step="<?php echo esc_attr($price_step_attr); ?>" value="<?php echo esc_attr($price_min_attr); ?>">
+              <input type="range" class="np-range-max" min="<?php echo esc_attr($price_min_attr); ?>" max="<?php echo esc_attr($price_max_attr); ?>" step="<?php echo esc_attr($price_step_attr); ?>" value="<?php echo esc_attr($price_max_attr); ?>">
             </div>
             <div class="np-price__labels">
-              <span class="np-price-min"><?php echo esc_html($price_min); ?></span>
+              <span class="np-price-min"><?php echo esc_html($price_min_label); ?></span>
               <span>—</span>
-              <span class="np-price-max"><?php echo esc_html($price_max); ?></span>
+              <span class="np-price-max"><?php echo esc_html($price_max_label); ?></span>
             </div>
           </div>
         </div>

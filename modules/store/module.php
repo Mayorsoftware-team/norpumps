@@ -108,6 +108,15 @@ class NorPumps_Modules_Store {
             $parts = array_map('trim', explode(':',$chunk,2));
             if (count($parts)==2){ $label = sanitize_text_field($parts[0]); $slug = sanitize_title($parts[1]); if ($slug) $groups[]=['label'=>$label?:$slug,'slug'=>$slug]; }
         }
+        $price_bounds = $this->get_price_bounds();
+        if ($price_bounds['min'] !== null) $atts['price_min'] = $price_bounds['min'];
+        if ($price_bounds['max'] !== null) $atts['price_max'] = $price_bounds['max'];
+        $price_decimals = wc_get_price_decimals();
+        $price_step = $this->get_price_step($price_decimals);
+        $price_min = isset($atts['price_min']) ? floatval($atts['price_min']) : 0;
+        $price_max = isset($atts['price_max']) ? floatval($atts['price_max']) : $price_min;
+        if ($price_max < $price_min) $price_max = $price_min;
+        $per_page = max(1, intval($atts['per_page']));
         ob_start();
         $filters_arr = array_filter(array_map('trim', explode(',', $atts['filters'])));
         include __DIR__.'/templates/store.php';
@@ -132,14 +141,19 @@ class NorPumps_Modules_Store {
         }
         $min = isset($_REQUEST['min_price']) ? floatval($_REQUEST['min_price']) : null;
         $max = isset($_REQUEST['max_price']) ? floatval($_REQUEST['max_price']) : null;
-        if ($min !== null || $max !== null){ $args['min_price']=$min; $args['max_price']=$max; }
+        if ($min !== null) $args['min_price'] = $min;
+        if ($max !== null) $args['max_price'] = $max;
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
         return $args;
     }
     public function ajax_query(){
         check_ajax_referer('norpumps_store','nonce');
         $args = $this->build_wc_query_from_request();
-        $products = wc_get_products($args);
+        $args['paginate'] = true;
+        $results = wc_get_products($args);
+        $products = isset($results['products']) ? $results['products'] : [];
+        $max_pages = isset($results['max_num_pages']) ? intval($results['max_num_pages']) : 1;
+        $current_page = max(1, intval(norpumps_array_get($args,'page',1)));
         ob_start();
         foreach ($products as $product){
             $post_object = get_post($product->get_id());
@@ -147,6 +161,95 @@ class NorPumps_Modules_Store {
             include __DIR__.'/templates/card.php';
         }
         wp_reset_postdata();
-        wp_send_json_success([ 'html'=>ob_get_clean(), 'args'=>$args ]);
+        $pagination = $this->render_pagination($current_page, $max_pages);
+        wp_send_json_success([
+            'html'=>ob_get_clean(),
+            'args'=>$args,
+            'pagination'=>$pagination,
+            'max_pages'=>$max_pages,
+            'current_page'=>$current_page,
+        ]);
+    }
+    private function get_price_bounds(){
+        $bounds = ['min'=>null,'max'=>null];
+        $base_args = [
+            'status'=>'publish',
+            'limit'=>1,
+            'orderby'=>'price',
+            'return'=>'objects',
+        ];
+        $min_products = wc_get_products($base_args + ['order'=>'ASC']);
+        if (!empty($min_products)){
+            $product = $min_products[0];
+            if (is_object($product) && method_exists($product, 'get_price')){
+                $bounds['min'] = floatval($product->get_price());
+            }
+        }
+        $max_products = wc_get_products($base_args + ['order'=>'DESC']);
+        if (!empty($max_products)){
+            $product = $max_products[0];
+            if (is_object($product) && method_exists($product, 'get_price')){
+                $bounds['max'] = floatval($product->get_price());
+            }
+        }
+        if ($bounds['min'] !== null && $bounds['max'] !== null && $bounds['max'] < $bounds['min']){
+            $bounds['max'] = $bounds['min'];
+        }
+        return $bounds;
+    }
+    private function get_price_step($decimals){
+        $decimals = intval($decimals);
+        if ($decimals <= 0) return 1;
+        $step = pow(10, -$decimals);
+        return $step > 0 ? $step : 1;
+    }
+    private function render_pagination($current_page, $max_pages){
+        $max_pages = max(1, intval($max_pages));
+        $current_page = max(1, min(intval($current_page), $max_pages));
+        if ($max_pages <= 1) return '';
+
+        $pages = [];
+        $range = 2;
+        $start = max(1, $current_page - $range);
+        $end = min($max_pages, $current_page + $range);
+        if ($start > 1){
+            $pages[] = 1;
+            if ($start > 2) $pages[] = 'gap';
+        }
+        for ($i = $start; $i <= $end; $i++){
+            $pages[] = $i;
+        }
+        if ($end < $max_pages){
+            if ($end < $max_pages - 1) $pages[] = 'gap';
+            $pages[] = $max_pages;
+        }
+
+        ob_start();
+        ?>
+        <nav class="np-pagination__nav" aria-label="<?php echo esc_attr__('Paginación','norpumps'); ?>">
+            <?php
+            $prev_page = max(1, $current_page - 1);
+            $prev_disabled = $current_page <= 1;
+            ?>
+            <button type="button" class="np-pagination__button np-pagination__prev" data-page="<?php echo esc_attr($prev_page); ?>"<?php echo $prev_disabled ? ' aria-disabled="true" disabled' : ''; ?>><?php esc_html_e('Anterior','norpumps'); ?></button>
+            <?php foreach ($pages as $page){
+                if ($page === 'gap'){
+                    echo '<span class="np-pagination__ellipsis">&hellip;</span>';
+                    continue;
+                }
+                $is_current = intval($page) === $current_page;
+                $classes = 'np-pagination__button';
+                if ($is_current) $classes .= ' is-active';
+                ?>
+                <button type="button" class="<?php echo esc_attr($classes); ?>" data-page="<?php echo esc_attr($page); ?>"<?php echo $is_current ? ' aria-current="page" disabled' : ''; ?>><?php echo esc_html($page); ?></button>
+                <?php
+            }
+            $next_page = min($max_pages, $current_page + 1);
+            $next_disabled = $current_page >= $max_pages;
+            ?>
+            <button type="button" class="np-pagination__button np-pagination__next" data-page="<?php echo esc_attr($next_page); ?>"<?php echo $next_disabled ? ' aria-disabled="true" disabled' : ''; ?>><?php esc_html_e('Siguiente','norpumps'); ?></button>
+        </nav>
+        <?php
+        return trim(ob_get_clean());
     }
 }
