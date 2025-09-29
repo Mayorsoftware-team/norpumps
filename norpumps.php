@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: NorPumps Suite
- * Description: v1.2.1 — Tienda solo con categorías. Padre = título; hijas = checkboxes. AJAX + URL amigables. Slider precio. Admin con autocompletar. (Fix JSON/func redeclare)
+ * Description: v1.2.1 — Tienda solo con categorías. Padre = título; hijas = checkboxes. AJAX + URL amigables. Slider precio. Admin con autocompletar. (Fix JSON/func redeclare) + módulo techsheet
  * Version: 1.2.1
  * Author: Mayorsoftware + ChatGPT
  * Requires at least: 6.0
@@ -35,7 +35,9 @@ class NorPumps_App {
         add_action('wp_enqueue_scripts', [$this,'front_assets']);
         add_action('admin_enqueue_scripts', [$this,'admin_assets']);
         require_once NORPUMPS_PATH.'includes/helpers.php';
+        // Módulos
         $this->register_module('store', 'NorPumps_Modules_Store');
+        $this->register_module('techsheet', 'NorPumps_Modules_Techsheet'); // NUEVO módulo de metacampos
         do_action('norpumps_register_modules', $this);
     }
     public function register_module($slug, $class){
@@ -60,6 +62,7 @@ class NorPumps_App {
         ]);
     }
     public function admin_assets($hook){
+        // Igual que base: solo carga assets en pantallas del menú NorPumps (no toca listado de productos)
         if (strpos($hook,'norpumps')!==false){
             wp_enqueue_style('norpumps-admin', NORPUMPS_URL.'assets/css/admin.css',[],NORPUMPS_VERSION);
             wp_enqueue_script('norpumps-admin', NORPUMPS_URL.'assets/js/admin.js',['jquery'],NORPUMPS_VERSION,true);
