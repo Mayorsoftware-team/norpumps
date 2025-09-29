@@ -5,7 +5,7 @@ $price_max = isset($atts['price_max']) ? floatval($atts['price_max']) : 10000;
 $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
 if (!isset($filters_arr)) $filters_arr = [];
 ?>
-<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>">
+<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($per_page); ?>">
   <div class="norpumps-store__header">
     <div class="norpumps-store__orderby">
       <label><?php esc_html_e('Ordenar…','norpumps'); ?></label>
@@ -30,13 +30,16 @@ if (!isset($filters_arr)) $filters_arr = [];
         <div class="np-filter__body">
           <div class="np-price">
             <div class="np-price__slider" data-min="<?php echo esc_attr($price_min); ?>" data-max="<?php echo esc_attr($price_max); ?>">
+              <div class="np-price__track">
+                <div class="np-price__range"></div>
+              </div>
               <input type="range" class="np-range-min" min="<?php echo esc_attr($price_min); ?>" max="<?php echo esc_attr($price_max); ?>" value="<?php echo esc_attr($price_min); ?>">
               <input type="range" class="np-range-max" min="<?php echo esc_attr($price_min); ?>" max="<?php echo esc_attr($price_max); ?>" value="<?php echo esc_attr($price_max); ?>">
             </div>
             <div class="np-price__labels">
-              <span class="np-price-min"><?php echo esc_html($price_min); ?></span>
+              <span class="np-price-min"><?php echo wp_kses_post(wc_price($price_min)); ?></span>
               <span>—</span>
-              <span class="np-price-max"><?php echo esc_html($price_max); ?></span>
+              <span class="np-price-max"><?php echo wp_kses_post(wc_price($price_max)); ?></span>
             </div>
           </div>
         </div>

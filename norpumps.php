@@ -57,6 +57,9 @@ class NorPumps_App {
         wp_localize_script('norpumps-store','NorpumpsStore',[
             'ajax_url'=>admin_url('admin-ajax.php'),
             'nonce'=>wp_create_nonce('norpumps_store'),
+            'currency_symbol'=>get_woocommerce_currency_symbol(),
+            'currency_position'=>get_option('woocommerce_currency_pos','left'),
+            'locale'=>get_locale(),
         ]);
     }
     public function admin_assets($hook){
