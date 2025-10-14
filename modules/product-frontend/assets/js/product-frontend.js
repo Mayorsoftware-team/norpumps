@@ -82,8 +82,43 @@
         return '#ffffff';
     }
 
-    function applyColor(cell) {
-        var bgColor = getEffectiveBackground(cell);
+    function freezeBackground(cell) {
+        var stored = cell.getAttribute('data-np-base-bg');
+        if (!stored) {
+            stored = getEffectiveBackground(cell);
+            if (stored) {
+                cell.setAttribute('data-np-base-bg', stored);
+            }
+        }
+
+        if (!stored) {
+            return null;
+        }
+
+        cell.style.setProperty('background-color', stored, 'important');
+        cell.style.setProperty('background', stored, 'important');
+
+        return stored;
+    }
+
+    function freezeTextColor(cell) {
+        var stored = cell.getAttribute('data-np-base-color');
+        if (!stored) {
+            stored = window.getComputedStyle(cell).color;
+            if (stored) {
+                cell.setAttribute('data-np-base-color', stored);
+            }
+        }
+
+        if (!stored) {
+            return;
+        }
+
+        cell.style.setProperty('color', stored, 'important');
+    }
+
+    function applyContrast(cell, background) {
+        var bgColor = background || getEffectiveBackground(cell);
         var rgb = parseRgb(bgColor);
         if (!rgb) {
             return;
@@ -95,12 +130,19 @@
 
     function enhanceRow(row) {
         var labelCell = row.querySelector('.np-spec-table__cell--label');
+        var valueCell = row.querySelector('.np-spec-table__cell--value');
         if (!labelCell) {
             return;
         }
 
         var apply = function () {
-            applyColor(labelCell);
+            var labelBg = freezeBackground(labelCell);
+            applyContrast(labelCell, labelBg);
+
+            if (valueCell) {
+                freezeBackground(valueCell);
+                freezeTextColor(valueCell);
+            }
         };
 
         apply();
