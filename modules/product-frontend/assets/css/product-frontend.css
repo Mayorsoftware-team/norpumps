@@ -37,26 +37,22 @@
     font-weight: 600;
 }
 
-.np-tab--datos-electricos .np-spec-table__row.is-odd .np-spec-table__cell--label,
-.np-tab--datos-electricos .np-spec-table__row.is-odd:hover .np-spec-table__cell--label {
+.np-tab--datos-electricos .np-spec-table__row.is-odd .np-spec-table__cell--label {
     background: #f4f5f5 !important;
     color: #111 !important;
 }
 
-.np-tab--datos-electricos .np-spec-table__row.is-odd .np-spec-table__cell--value,
-.np-tab--datos-electricos .np-spec-table__row.is-odd:hover .np-spec-table__cell--value {
+.np-tab--datos-electricos .np-spec-table__row.is-odd .np-spec-table__cell--value {
     background: #115B6A !important;
     color: #fff !important;
 }
 
-.np-tab--datos-electricos .np-spec-table__row.is-even .np-spec-table__cell--label,
-.np-tab--datos-electricos .np-spec-table__row.is-even:hover .np-spec-table__cell--label {
+.np-tab--datos-electricos .np-spec-table__row.is-even .np-spec-table__cell--label {
     background: #e3e6e6 !important;
     color: #111 !important;
 }
 
-.np-tab--datos-electricos .np-spec-table__row.is-even .np-spec-table__cell--value,
-.np-tab--datos-electricos .np-spec-table__row.is-even:hover .np-spec-table__cell--value {
+.np-tab--datos-electricos .np-spec-table__row.is-even .np-spec-table__cell--value {
     background: #0d4f5c !important;
     color: #fff !important;
 }
