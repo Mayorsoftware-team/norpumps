@@ -38,6 +38,7 @@ class NorPumps_App {
         // Módulos
         $this->register_module('store', 'NorPumps_Modules_Store');
         $this->register_module('techsheet', 'NorPumps_Modules_Techsheet'); // NUEVO módulo de metacampos
+        $this->register_module('product-frontend', 'NorPumps_Modules_Product_Frontend');
         do_action('norpumps_register_modules', $this);
     }
     public function register_module($slug, $class){
