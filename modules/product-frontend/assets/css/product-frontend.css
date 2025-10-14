@@ -31,12 +31,39 @@
 .np-spec-table th {
     font-weight: 600;
     width: 40%;
+}
+
+.np-tab--datos-electricos .np-spec-table__row .np-spec-table__cell--label {
+    font-weight: 600;
+}
+
+.np-tab--datos-electricos .np-spec-table__row.is-odd .np-spec-table__cell--label {
     background: #f4f5f5;
     color: #111;
 }
 
-.np-spec-table td {
+.np-tab--datos-electricos .np-spec-table__row.is-odd .np-spec-table__cell--value {
     background: #115B6A;
+    color: #fff;
+}
+
+.np-tab--datos-electricos .np-spec-table__row.is-even .np-spec-table__cell--label {
+    background: #e3e6e6;
+    color: #111;
+}
+
+.np-tab--datos-electricos .np-spec-table__row.is-even .np-spec-table__cell--value {
+    background: #0d4f5c;
+    color: #fff;
+}
+
+.np-tab--datos-electricos .np-spec-table__row:hover .np-spec-table__cell--label {
+    background: #d2d7d7;
+    color: #111;
+}
+
+.np-tab--datos-electricos .np-spec-table__row:hover .np-spec-table__cell--value {
+    background: #0b4150;
     color: #fff;
 }
 
