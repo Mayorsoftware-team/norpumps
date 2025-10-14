@@ -3,7 +3,7 @@
  * Plugin Name: NorPumps Suite
  * Description: v1.2.1 — Tienda solo con categorías. Padre = título; hijas = checkboxes. AJAX + URL amigables. Slider precio. Admin con autocompletar. (Fix JSON/func redeclare) + módulo techsheet
  * Version: 1.2.1
- * Author: Mayorsoftware + ChatGPT
+ * Author: Alfonso (fiverr)
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: norpumps
