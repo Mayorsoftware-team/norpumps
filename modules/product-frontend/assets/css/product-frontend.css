@@ -57,16 +57,6 @@
     color: #fff;
 }
 
-.np-tab--datos-electricos .np-spec-table__row:hover .np-spec-table__cell--label {
-    background: #d2d7d7;
-    color: #111;
-}
-
-.np-tab--datos-electricos .np-spec-table__row:hover .np-spec-table__cell--value {
-    background: #0b4150;
-    color: #fff;
-}
-
 .np-spec-table tr:last-child th,
 .np-spec-table tr:last-child td {
     border-bottom: 0;
