@@ -31,6 +31,13 @@
 .np-spec-table th {
     font-weight: 600;
     width: 40%;
+    background: #f4f5f5;
+    color: #111;
+}
+
+.np-spec-table td {
+    background: #115B6A;
+    color: #fff;
 }
 
 .np-spec-table tr:last-child th,
