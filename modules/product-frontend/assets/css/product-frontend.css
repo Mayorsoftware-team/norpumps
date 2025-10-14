@@ -1,0 +1,39 @@
+.woocommerce div.product .np-tab {
+    padding: 1.5em 0;
+}
+
+.woocommerce div.product .np-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.5em;
+    font-size: 0.95em;
+}
+
+.np-rich p {
+    margin: 0 0 1em;
+}
+
+.np-spec-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 1.5em;
+    font-size: 0.95em;
+}
+
+.np-spec-table th,
+.np-spec-table td {
+    padding: 0.65em 0.9em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    text-align: left;
+}
+
+.np-spec-table th {
+    font-weight: 600;
+    width: 40%;
+}
+
+.np-spec-table tr:last-child th,
+.np-spec-table tr:last-child td {
+    border-bottom: 0;
+}
