@@ -234,6 +234,14 @@ class NorPumps_Modules_Product_Frontend {
             [],
             NORPUMPS_VERSION
         );
+
+        wp_enqueue_script(
+            'norpumps-product-frontend',
+            NORPUMPS_URL . 'modules/product-frontend/assets/js/product-frontend.js',
+            [],
+            NORPUMPS_VERSION,
+            true
+        );
     }
 
     public function filter_tabs($tabs) {
