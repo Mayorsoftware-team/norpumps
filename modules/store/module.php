@@ -108,6 +108,9 @@ class NorPumps_Modules_Store {
             $parts = array_map('trim', explode(':',$chunk,2));
             if (count($parts)==2){ $label = sanitize_text_field($parts[0]); $slug = sanitize_title($parts[1]); if ($slug) $groups[]=['label'=>$label?:$slug,'slug'=>$slug]; }
         }
+        wp_enqueue_script('wc-add-to-cart');
+        wp_enqueue_script('wc-cart-fragments');
+        wp_enqueue_style('woocommerce-general');
         ob_start();
         $filters_arr = array_filter(array_map('trim', explode(',', $atts['filters'])));
         include __DIR__.'/templates/store.php';
