@@ -5,7 +5,7 @@ $price_max = isset($atts['price_max']) ? floatval($atts['price_max']) : 10000;
 $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
 if (!isset($filters_arr)) $filters_arr = [];
 ?>
-<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>">
+<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="1">
   <div class="norpumps-store__header">
     <div class="norpumps-store__orderby">
       <label><?php esc_html_e('Ordenar…','norpumps'); ?></label>
