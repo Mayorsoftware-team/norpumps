@@ -14,54 +14,63 @@
     margin: 0 0 1em;
 }
 
-.np-spec-table {
+.np-spec-list {
     width: 100%;
-    border-collapse: collapse;
     margin: 0 0 1.5em;
     font-size: 0.95em;
 }
 
-.np-spec-table th,
-.np-spec-table td {
-    padding: 0.65em 0.9em;
+.np-spec-list__row {
+    display: flex;
+    flex-wrap: wrap;
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.np-spec-list__row:last-child {
+    border-bottom: 0;
+}
+
+.np-spec-list__cell {
+    padding: 0.65em 0.9em;
     text-align: left;
 }
 
-.np-spec-table th {
-    font-weight: 600;
-    width: 40%;
-}
-
-.np-tab--datos-electricos .np-spec-table__row .np-spec-table__cell--label {
+.np-spec-list__cell--label {
+    flex: 0 0 40%;
     font-weight: 600;
 }
 
-.np-tab--datos-electricos .np-spec-table__row.is-odd .np-spec-table__cell--label {
-    background: #f4f5f5 !important;
-    color: #111 !important;
+.np-spec-list__cell--value {
+    flex: 1 1 60%;
 }
 
-.np-tab--datos-electricos .np-spec-table__row.is-odd .np-spec-table__cell--value {
-    background: #115B6A !important;
-    color: #fff !important;
+.np-tab--datos-electricos .np-spec-list__row.is-odd .np-spec-list__cell--label {
+    background: #f4f5f5;
+    color: #111;
 }
 
-.np-tab--datos-electricos .np-spec-table__row.is-even .np-spec-table__cell--label {
-    background: #e3e6e6 !important;
-    color: #111 !important;
+.np-tab--datos-electricos .np-spec-list__row.is-odd .np-spec-list__cell--value {
+    background: #115B6A;
+    color: #fff;
 }
 
-.np-tab--datos-electricos .np-spec-table__row.is-even .np-spec-table__cell--value {
-    background: #0d4f5c !important;
-    color: #fff !important;
+.np-tab--datos-electricos .np-spec-list__row.is-even .np-spec-list__cell--label {
+    background: #e3e6e6;
+    color: #111;
 }
 
-.np-tab--datos-electricos .np-spec-table__row:hover {
-    background: transparent !important;
+.np-tab--datos-electricos .np-spec-list__row.is-even .np-spec-list__cell--value {
+    background: #0d4f5c;
+    color: #fff;
 }
 
-.np-spec-table tr:last-child th,
-.np-spec-table tr:last-child td {
-    border-bottom: 0;
+@media (max-width: 640px) {
+    .np-spec-list__cell--label,
+    .np-spec-list__cell--value {
+        flex: 1 1 100%;
+    }
+
+    .np-spec-list__cell--label {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
 }
