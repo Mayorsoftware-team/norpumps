@@ -3,9 +3,10 @@
 $price_min = isset($atts['price_min']) ? floatval($atts['price_min']) : 0;
 $price_max = isset($atts['price_max']) ? floatval($atts['price_max']) : 10000;
 $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
+$per_page  = isset($atts['per_page']) ? max(1, intval($atts['per_page'])) : 12;
 if (!isset($filters_arr)) $filters_arr = [];
 ?>
-<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>">
+<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($per_page); ?>">
   <div class="norpumps-store__header">
     <div class="norpumps-store__orderby">
       <label><?php esc_html_e('Ordenar…','norpumps'); ?></label>
@@ -76,7 +77,7 @@ if (!isset($filters_arr)) $filters_arr = [];
 
     <section class="norpumps-grid">
       <div class="np-grid js-np-grid products" data-columns="<?php echo esc_attr($columns); ?>"></div>
-      <div class="np-pagination js-np-pagination"></div>
+      <div class="np-pagination js-np-pagination" aria-live="polite"></div>
     </section>
   </div>
 </div>

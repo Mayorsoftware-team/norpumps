@@ -117,12 +117,40 @@ class NorPumps_Modules_Store {
         return ob_get_clean();
     }
     private function build_wc_query_from_request(){
+        $limit = max(1, intval(norpumps_array_get($_REQUEST,'per_page',12)));
+        $page  = max(1, intval(norpumps_array_get($_REQUEST,'page',1)));
+        $orderby_raw = sanitize_text_field(norpumps_array_get($_REQUEST,'orderby','menu_order title'));
+        $orderby = 'menu_order'; $order = 'ASC';
+        switch ($orderby_raw) {
+            case 'price-desc':
+                $orderby = 'price'; $order = 'DESC';
+                break;
+            case 'price':
+            case 'popularity':
+            case 'rating':
+                $orderby = $orderby_raw; $order = 'ASC';
+                break;
+            case 'date':
+                $orderby = 'date'; $order = 'DESC';
+                break;
+            case 'title':
+                $orderby = 'title'; $order = 'ASC';
+                break;
+            case 'menu_order title':
+                $orderby = 'menu_order'; $order = 'ASC';
+                break;
+            default:
+                if (!empty($orderby_raw)){
+                    $orderby = $orderby_raw;
+                }
+        }
         $args = [
             'status'=>'publish',
-            'limit'=>max(1, intval(norpumps_array_get($_REQUEST,'per_page',12))),
-            'page'=>max(1, intval(norpumps_array_get($_REQUEST,'page',1))),
-            'orderby'=>sanitize_text_field(norpumps_array_get($_REQUEST,'orderby','menu_order title')),
-            'order'=>'ASC',
+            'limit'=>$limit,
+            'page'=>$page,
+            'orderby'=>$orderby,
+            'order'=>$order,
+            'paginate'=>true,
         ];
         $tax_query = ['relation'=>'AND'];
         foreach ($_REQUEST as $k=>$v){
@@ -136,13 +164,47 @@ class NorPumps_Modules_Store {
         $min = isset($_REQUEST['min_price']) ? floatval($_REQUEST['min_price']) : null;
         $max = isset($_REQUEST['max_price']) ? floatval($_REQUEST['max_price']) : null;
         if ($min !== null || $max !== null){ $args['min_price']=$min; $args['max_price']=$max; }
+        $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
+        if ($search){ $args['s']=$search; }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
         return $args;
+    }
+    private function normalize_products_result($results, $args){
+        $limit = max(1, intval(norpumps_array_get($args,'limit',12)));
+        $products = []; $total = 0; $pages = 1;
+        if (is_array($results) && isset($results['products'])){
+            $products = $results['products'];
+            $total = isset($results['total']) ? intval($results['total']) : count($products);
+            if (isset($results['pages'])){
+                $pages = max(1, intval($results['pages']));
+            } elseif (isset($results['max_num_pages'])){
+                $pages = max(1, intval($results['max_num_pages']));
+            }
+        } else {
+            $products = is_array($results) ? $results : [];
+            $total = count($products);
+            $pages = $total ? (int)ceil($total / $limit) : 1;
+        }
+        return [ 'products'=>$products, 'total'=>$total, 'pages'=>max(1,$pages) ];
     }
     public function ajax_query(){
         check_ajax_referer('norpumps_store','nonce');
         $args = $this->build_wc_query_from_request();
-        $products = wc_get_products($args);
+        $results = wc_get_products($args);
+        $normalized = $this->normalize_products_result($results, $args);
+        $products = $normalized['products'];
+        $total = $normalized['total'];
+        $pages = $normalized['pages'];
+        $requested_page = max(1, intval(norpumps_array_get($args,'page',1)));
+        if ($total > 0 && empty($products) && $requested_page > 1){
+            $args['page'] = min($pages, $requested_page);
+            $results = wc_get_products($args);
+            $normalized = $this->normalize_products_result($results, $args);
+            $products = $normalized['products'];
+            $total = $normalized['total'];
+            $pages = $normalized['pages'];
+            $requested_page = max(1, intval(norpumps_array_get($args,'page',1)));
+        }
         ob_start();
         foreach ($products as $product){
             $post_object = get_post($product->get_id());
@@ -150,6 +212,22 @@ class NorPumps_Modules_Store {
             include __DIR__.'/templates/card.php';
         }
         wp_reset_postdata();
-        wp_send_json_success([ 'html'=>ob_get_clean(), 'args'=>$args ]);
+        $current_page = min($pages, $requested_page);
+        if ($current_page > $pages){ $current_page = $pages; }
+        $limit = max(1, intval(norpumps_array_get($args,'limit',12)));
+        $from = $total ? (($current_page-1)*$limit + 1) : 0;
+        $to = $total ? min($total, $current_page*$limit) : 0;
+        wp_send_json_success([
+            'html'=>ob_get_clean(),
+            'args'=>$args,
+            'pagination'=>[
+                'current'=>$current_page,
+                'total_pages'=>$pages,
+                'total'=>$total,
+                'per_page'=>$limit,
+                'from'=>$from,
+                'to'=>$to,
+            ],
+        ]);
     }
 }

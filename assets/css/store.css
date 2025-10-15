@@ -31,7 +31,19 @@
 .np-card__price{ font-weight:700; margin-bottom:8px; }
 .np-card__actions .button{ background:#1f7c85; color:#fff; border:none; padding:8px 10px; border-radius:8px; }
 .np-card__actions .ajax_add_to_cart.added::after{ content:"\2713"; margin-left:.5rem; font-weight:700; display:inline-block; transform:translateY(-1px); }
-.np-pagination{ margin:20px 0; text-align:center; }
+.norpumps-store.is-loading .js-np-grid{ opacity:.4; pointer-events:none; position:relative; transition:opacity .2s ease; }
+.norpumps-store.is-loading .js-np-grid::after{ content:''; position:absolute; inset:0; border-radius:12px; background:linear-gradient(120deg, rgba(255,255,255,0.65), rgba(255,255,255,0.15)); pointer-events:none; }
+.np-pagination{ margin:28px 0; }
+.np-pagination__inner{ background:#fff; border:1px solid var(--np-border); border-radius:14px; padding:18px 20px; display:flex; flex-direction:column; gap:14px; align-items:center; box-shadow:0 12px 24px -18px rgba(15,91,98,0.35); }
+@media(min-width:680px){ .np-pagination__inner{ flex-direction:row; justify-content:space-between; align-items:center; } }
+.np-pagination__summary{ font-size:14px; font-weight:600; color:#21444a; text-align:center; }
+.np-pagination__buttons{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+.np-page{ border:1px solid var(--np-border); background:#fff; color:var(--np-text); padding:8px 14px; border-radius:999px; font-weight:600; min-width:40px; transition:all .2s ease; cursor:pointer; box-shadow:0 4px 12px -8px rgba(15,91,98,0.45); }
+.np-page:hover:not(:disabled):not(.np-page--gap){ border-color:var(--np-accent); color:var(--np-accent); box-shadow:0 8px 18px -12px rgba(15,91,98,0.65); transform:translateY(-1px); }
+.np-page.is-active{ background:var(--np-accent); color:#fff; border-color:var(--np-accent); box-shadow:0 12px 20px -12px rgba(15,91,98,0.65); cursor:default; }
+.np-page[disabled]{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+.np-page--gap{ border:none; background:transparent; cursor:default; box-shadow:none; padding:8px 6px; font-weight:700; }
+.norpumps-store.is-loading .np-pagination__inner{ opacity:.65; }
 /* Admin pretty */
 .norpumps-admin .np-card{ background:#fff; border:1px solid #e7eef2; border-radius:12px; padding:14px; }
 .norpumps-admin .np-row{ display:flex; gap:12px; align-items:center; margin:10px 0; }
