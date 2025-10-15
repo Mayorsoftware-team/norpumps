@@ -5,113 +5,191 @@ jQuery(function($){
     'date':'DESC',
     'popularity':'DESC'
   };
-  function clamp(v,a,b){ v=parseFloat(v||0); return Math.min(Math.max(v,a), b); }
-  function syncPriceUI($root){
-    const $wrap = $root.find('.np-price__slider'); if (!$wrap.length) return {};
-    const min = parseFloat($wrap.data('min')), max = parseFloat($wrap.data('max'));
-    const $min = $wrap.find('.np-range-min'), $max = $wrap.find('.np-range-max');
-    let vmin = clamp($min.val(), min, max), vmax = clamp($max.val(), min, max);
-    if (vmin>vmax){ const t=vmin; vmin=vmax; vmax=t; $min.val(vmin); $max.val(vmax); }
-    $root.find('.np-price-min').text(vmin); $root.find('.np-price-max').text(vmax);
-    return {min:vmin, max:vmax};
-  }
-  function getPerPage($root){
-    return parseInt($root.data('per-page'), 10) || 12;
+  const SCROLL_OFFSET = 120;
+  const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
+
+  function clamp(value, min, max){
+    value = parseFloat(value || 0);
+    if (!isFiniteNumber(value)) value = min;
+    return Math.min(Math.max(value, min), max);
   }
   function getDefaultPerPage($root){
-    return parseInt($root.data('default-per-page'), 10) || getPerPage($root);
+    const val = parseInt($root.data('defaultPerPage'), 10);
+    return isFiniteNumber(val) && val > 0 ? val : 12;
+  }
+  function setPerPage($root, value){
+    const perPage = Math.max(1, parseInt(value, 10) || getDefaultPerPage($root));
+    $root.data('perPage', perPage);
+  }
+  function getPerPage($root){
+    const val = parseInt($root.data('perPage'), 10);
+    if (isFiniteNumber(val) && val > 0) return val;
+    const fallback = getDefaultPerPage($root);
+    setPerPage($root, fallback);
+    return fallback;
+  }
+  function getDefaultPage($root){
+    const val = parseInt($root.data('defaultPage'), 10);
+    return isFiniteNumber(val) && val > 0 ? val : 1;
+  }
+  function setCurrentPage($root, value){
+    const current = Math.max(1, parseInt(value, 10) || getDefaultPage($root));
+    $root.data('currentPage', current);
   }
   function getCurrentPage($root){
-    return parseInt($root.data('current-page'), 10) || 1;
+    const val = parseInt($root.data('currentPage'), 10);
+    if (isFiniteNumber(val) && val > 0) return val;
+    const fallback = getDefaultPage($root);
+    setCurrentPage($root, fallback);
+    return fallback;
+  }
+  function getDefaultMinPrice($root){
+    const val = parseFloat($root.data('defaultMinPrice'));
+    return isFiniteNumber(val) ? val : null;
+  }
+  function getDefaultMaxPrice($root){
+    const val = parseFloat($root.data('defaultMaxPrice'));
+    return isFiniteNumber(val) ? val : null;
+  }
+  function syncPriceUI($root){
+    const $wrap = $root.find('.np-price__slider');
+    if (!$wrap.length) return {};
+    const sliderMin = parseFloat($wrap.data('min'));
+    const sliderMax = parseFloat($wrap.data('max'));
+    const $min = $wrap.find('.np-range-min');
+    const $max = $wrap.find('.np-range-max');
+    let vmin = clamp($min.val(), sliderMin, sliderMax);
+    let vmax = clamp($max.val(), sliderMin, sliderMax);
+    if (vmin > vmax){ const tmp = vmin; vmin = vmax; vmax = tmp; }
+    $min.val(vmin); $max.val(vmax);
+    $root.find('.np-price-min').text(vmin);
+    $root.find('.np-price-max').text(vmax);
+    return {min:vmin, max:vmax};
   }
   function buildQuery($root){
     const data = { action:'norpumps_store_query', nonce:NorpumpsStore.nonce };
     data.per_page = getPerPage($root);
     data.page = getCurrentPage($root);
     const orderby = $root.find('.np-orderby select').val();
-    data.orderby = orderby;
+    if (orderby){ data.orderby = orderby; }
     const orderDir = ORDER_DIRECTIONS[orderby];
     if (orderDir){ data.order = orderDir; }
-    const q = $root.find('.np-search').val(); if (q) data.s = q;
-    const pr = syncPriceUI($root); if (pr.min!=null) data.min_price = pr.min; if (pr.max!=null) data.max_price = pr.max;
+    const search = $root.find('.np-search').val();
+    if (search){ data.s = search; }
+    const price = syncPriceUI($root);
+    if (price.min != null) data.min_price = price.min;
+    if (price.max != null) data.max_price = price.max;
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
       const group = $(this).data('group');
-      const vals = $(this).find('input:checked').map(function(){return this.value;}).get();
+      const vals = $(this).find('input:checked').map(function(){ return this.value; }).get();
       const allOn = $(this).closest('.np-filter__body').find('.np-all-toggle').is(':checked');
-      if (vals.length && !allOn) data['cat_'+group] = vals.join(',');
+      if (group && vals.length && !allOn){
+        data['cat_'+group] = vals.join(',');
+      }
     });
     return data;
   }
   function toQuery($root, obj){
-    const p = new URLSearchParams();
+    const params = new URLSearchParams();
     const defaultPer = getDefaultPerPage($root);
-    Object.keys(obj).forEach(k=>{
-      if (['action','nonce'].includes(k)) return;
-      if (k === 'page' && parseInt(obj[k], 10) <= 1) return;
-      if (k === 'per_page' && parseInt(obj[k], 10) === defaultPer) return;
-      if (obj[k]!=='' && obj[k]!=null) p.set(k,obj[k]);
+    const defaultPage = getDefaultPage($root);
+    const defaultMin = getDefaultMinPrice($root);
+    const defaultMax = getDefaultMaxPrice($root);
+    Object.keys(obj).forEach(key => {
+      if (['action','nonce'].includes(key)) return;
+      if (obj[key] === '' || obj[key] == null) return;
+      if (key === 'page' && parseInt(obj[key], 10) === defaultPage) return;
+      if (key === 'per_page' && parseInt(obj[key], 10) === defaultPer) return;
+      if (key === 'min_price' && defaultMin !== null && parseFloat(obj[key]) === defaultMin) return;
+      if (key === 'max_price' && defaultMax !== null && parseFloat(obj[key]) === defaultMax) return;
+      params.set(key, obj[key]);
     });
-    return p.toString();
+    return params.toString();
   }
-  function load($root, page){
-    if (typeof page !== 'undefined'){ $root.data('current-page', Math.max(1, parseInt(page, 10) || 1)); }
-    const data = buildQuery($root);
-    const qs = toQuery($root, data);
-    history.replaceState(null,'', qs ? (location.pathname+'?'+qs) : location.pathname);
+  function scrollToStore($root){
+    const $target = $root.find('.norpumps-grid');
+    if (!$target.length) return;
+    const offset = $target.offset() || { top: 0 };
+    const top = Math.max((offset.top || 0) - SCROLL_OFFSET, 0);
+    $('html, body').animate({scrollTop: top}, 250);
+  }
+  function load($root, page, options){
+    const opts = $.extend({scroll:false}, options);
+    if (typeof page !== 'undefined'){ setCurrentPage($root, page); }
+    const payload = buildQuery($root);
     $root.addClass('is-loading');
-    $.post(NorpumpsStore.ajax_url, data, function(resp){
+    $.post(NorpumpsStore.ajax_url, payload, function(resp){
       if (!resp || !resp.success) return;
       $root.find('.js-np-grid').html(resp.data.html);
       $root.find('.js-np-pagination').html(resp.data.pagination_html || '');
-      if (resp.data.page){ $root.data('current-page', resp.data.page); }
-      if (resp.data.args && resp.data.args.limit){ $root.data('per-page', parseInt(resp.data.args.limit, 10)); }
+      if (resp.data.page){ setCurrentPage($root, resp.data.page); }
+      if (resp.data.args && resp.data.args.limit){ setPerPage($root, resp.data.args.limit); }
+      const finalPayload = buildQuery($root);
+      const qs = toQuery($root, finalPayload);
+      history.replaceState(null, '', qs ? (location.pathname + '?' + qs) : location.pathname);
+      if (opts.scroll){ scrollToStore($root); }
     }).always(function(){
       $root.removeClass('is-loading');
     });
   }
-  function resetToFirstPage($root){ $root.data('current-page', 1); }
+  function resetToFirstPage($root){ setCurrentPage($root, 1); }
   function bindAllToggle($root){
     $root.on('change', '.np-all-toggle', function(){
       const $body = $(this).closest('.np-filter__body');
       $body.find('.np-checklist input[type=checkbox]').prop('checked', false);
       resetToFirstPage($root);
-      load($root, 1);
+      load($root, 1, {scroll:true});
     });
     $root.on('change', '.np-checklist input[type=checkbox]', function(){
       const $body = $(this).closest('.np-filter__body');
-      if ($(this).is(':checked')) $body.find('.np-all-toggle').prop('checked', false);
-      const anyChecked = $body.find('.np-checklist input:checked').length>0;
-      if (!anyChecked) $body.find('.np-all-toggle').prop('checked', true);
+      if ($(this).is(':checked')){ $body.find('.np-all-toggle').prop('checked', false); }
+      const anyChecked = $body.find('.np-checklist input:checked').length > 0;
+      if (!anyChecked){ $body.find('.np-all-toggle').prop('checked', true); }
       resetToFirstPage($root);
-      load($root, 1);
+      load($root, 1, {scroll:true});
     });
   }
+
   $('.norpumps-store').each(function(){
     const $root = $(this);
-    $root.on('change', '.np-orderby select', function(){ resetToFirstPage($root); load($root, 1); });
-    $root.on('input change', '.np-price__slider input[type=range]', function(){ syncPriceUI($root); }).on('change', '.np-price__slider input[type=range]', function(){ resetToFirstPage($root); load($root, 1); });
-    $root.on('keyup', '.np-search', function(e){ if (e.keyCode===13){ resetToFirstPage($root); load($root, 1); } });
+    setPerPage($root, getPerPage($root));
+    setCurrentPage($root, getCurrentPage($root));
+
+    $root.on('change', '.np-orderby select', function(){ resetToFirstPage($root); load($root, 1, {scroll:true}); });
+    $root.on('input change', '.np-price__slider input[type=range]', function(){ syncPriceUI($root); })
+         .on('change', '.np-price__slider input[type=range]', function(){ resetToFirstPage($root); load($root, 1, {scroll:true}); });
+    $root.on('keyup', '.np-search', function(e){ if (e.keyCode === 13){ resetToFirstPage($root); load($root, 1, {scroll:true}); } });
     $root.on('click', '.js-np-page', function(e){
       e.preventDefault();
       const $item = $(this).closest('.np-pagination__item');
       if ($item.hasClass('is-disabled') || $item.hasClass('is-active')) return;
       const page = parseInt($(this).data('page'), 10);
-      if (page){ load($root, page); }
+      if (isFiniteNumber(page) && page > 0){ load($root, page, {scroll:true}); }
     });
+
     bindAllToggle($root);
+
     const url = new URL(window.location.href);
-    const pmin = url.searchParams.get('min_price'), pmax = url.searchParams.get('max_price');
-    if (pmin!=null) $root.find('.np-range-min').val(pmin);
-    if (pmax!=null) $root.find('.np-range-max').val(pmax);
+    const pmin = url.searchParams.get('min_price');
+    const pmax = url.searchParams.get('max_price');
+    if (pmin != null){ $root.find('.np-range-min').val(pmin); }
+    if (pmax != null){ $root.find('.np-range-max').val(pmax); }
     syncPriceUI($root);
+
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
-      const group = $(this).data('group'); const key = 'cat_'+group;
-      const vals = (url.searchParams.get(key)||'').split(',').filter(Boolean);
-      if (vals.length){
-        const $body = $(this).closest('.np-filter__body'); $body.find('.np-all-toggle').prop('checked', false);
-        $(this).find('input').each(function(){ if (vals.includes(this.value)) this.checked = true; });
+      const group = $(this).data('group');
+      if (!group) return;
+      const key = 'cat_'+group;
+      const values = (url.searchParams.get(key) || '').split(',').filter(Boolean);
+      if (values.length){
+        const $body = $(this).closest('.np-filter__body');
+        $body.find('.np-all-toggle').prop('checked', false);
+        $(this).find('input').each(function(){
+          if (values.includes(this.value)){ this.checked = true; }
+        });
       }
     });
+
     const queryOrder = url.searchParams.get('orderby');
     if (queryOrder && $root.find('.np-orderby select option[value="'+queryOrder+'"]').length){
       $root.find('.np-orderby select').val(queryOrder);
@@ -119,9 +197,10 @@ jQuery(function($){
     const querySearch = url.searchParams.get('s');
     if (querySearch){ $root.find('.np-search').val(querySearch); }
     const queryPer = parseInt(url.searchParams.get('per_page'), 10);
-    if (queryPer){ $root.data('per-page', queryPer); }
+    if (isFiniteNumber(queryPer) && queryPer > 0){ setPerPage($root, queryPer); }
     const queryPage = parseInt(url.searchParams.get('page'), 10);
-    if (queryPage){ $root.data('current-page', queryPage); }
-    load($root, getCurrentPage($root));
+    if (isFiniteNumber(queryPage) && queryPage > 0){ setCurrentPage($root, queryPage); }
+
+    load($root, getCurrentPage($root), {scroll:false});
   });
 });
