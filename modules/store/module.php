@@ -103,6 +103,7 @@ class NorPumps_Modules_Store {
             'per_page'=>12,'order'=>'menu_order title',
         ], $atts, 'norpumps_store');
         $columns = max(2, min(6, intval($atts['columns'])));
+        $per_page = max(1, intval($atts['per_page']));
         $groups = [];
         foreach (array_filter(array_map('trim', explode('|',$atts['groups']))) as $chunk){
             $parts = array_map('trim', explode(':',$chunk,2));
@@ -121,9 +122,28 @@ class NorPumps_Modules_Store {
             'status'=>'publish',
             'limit'=>max(1, intval(norpumps_array_get($_REQUEST,'per_page',12))),
             'page'=>max(1, intval(norpumps_array_get($_REQUEST,'page',1))),
-            'orderby'=>sanitize_text_field(norpumps_array_get($_REQUEST,'orderby','menu_order title')),
-            'order'=>'ASC',
+            'paginate'=>true,
         ];
+        $orderby_raw = sanitize_text_field(norpumps_array_get($_REQUEST,'orderby','menu_order title'));
+        $orderby = $orderby_raw === 'menu_order title' ? 'menu_order' : $orderby_raw;
+        $order = strtoupper(sanitize_text_field(norpumps_array_get($_REQUEST,'order','')));
+        if (function_exists('WC')){
+            $ordering = WC()->query->get_catalog_ordering_args($orderby, $order ?: null);
+            if (!empty($ordering['orderby'])){
+                $args['orderby'] = $ordering['orderby'];
+            }
+            if (!empty($ordering['order'])){
+                $args['order'] = $ordering['order'];
+            }
+            if (!empty($ordering['meta_key'])){
+                $args['meta_key'] = $ordering['meta_key'];
+            }
+        } else {
+            $args['orderby'] = $orderby;
+            if ($order){
+                $args['order'] = $order;
+            }
+        }
         $tax_query = ['relation'=>'AND'];
         foreach ($_REQUEST as $k=>$v){
             if (strpos($k,'cat_')===0 && !empty($v)){
@@ -136,13 +156,18 @@ class NorPumps_Modules_Store {
         $min = isset($_REQUEST['min_price']) ? floatval($_REQUEST['min_price']) : null;
         $max = isset($_REQUEST['max_price']) ? floatval($_REQUEST['max_price']) : null;
         if ($min !== null || $max !== null){ $args['min_price']=$min; $args['max_price']=$max; }
+        $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
+        if ($search !== ''){ $args['s'] = $search; }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
         return $args;
     }
     public function ajax_query(){
         check_ajax_referer('norpumps_store','nonce');
         $args = $this->build_wc_query_from_request();
-        $products = wc_get_products($args);
+        $results = wc_get_products($args);
+        $products = is_array($results) ? norpumps_array_get($results, 'products', []) : (property_exists($results, 'products') ? $results->products : []);
+        $total = is_array($results) ? intval(norpumps_array_get($results, 'total', 0)) : (property_exists($results, 'total') ? intval($results->total) : 0);
+        $max_pages = is_array($results) ? intval(norpumps_array_get($results, 'max_num_pages', 0)) : (property_exists($results, 'max_num_pages') ? intval($results->max_num_pages) : 0);
         ob_start();
         foreach ($products as $product){
             $post_object = get_post($product->get_id());
@@ -150,6 +175,63 @@ class NorPumps_Modules_Store {
             include __DIR__.'/templates/card.php';
         }
         wp_reset_postdata();
-        wp_send_json_success([ 'html'=>ob_get_clean(), 'args'=>$args ]);
+        wp_send_json_success([
+            'html'=>ob_get_clean(),
+            'pagination_html'=>$this->render_pagination_html(max(1, intval($args['page'] ?? 1)), max(1, $max_pages)),
+            'total'=>$total,
+            'page'=>max(1, intval($args['page'] ?? 1)),
+            'max_pages'=>max(1, $max_pages),
+            'args'=>$args,
+        ]);
+    }
+    private function render_pagination_html($current_page, $total_pages){
+        if ($total_pages <= 1){
+            return '';
+        }
+        $current_page = max(1, $current_page);
+        $total_pages = max(1, $total_pages);
+        $html = '<nav class="np-pagination__nav" aria-label="'.esc_attr__('Paginación de productos','norpumps').'">';
+        $html .= '<ul class="np-pagination__list">';
+        $prev_page = max(1, $current_page - 1);
+        $next_page = min($total_pages, $current_page + 1);
+        $html .= sprintf(
+            '<li class="np-pagination__item %1$s"><a href="#" class="np-pagination__link js-np-page" data-page="%2$d" aria-label="%3$s" %4$s>&laquo;</a></li>',
+            $current_page === 1 ? 'is-disabled' : '',
+            $prev_page,
+            esc_attr__('Página anterior','norpumps'),
+            $current_page === 1 ? 'tabindex="-1" aria-disabled="true"' : ''
+        );
+        $window = 2;
+        $start = max(1, $current_page - $window);
+        $end = min($total_pages, $current_page + $window);
+        if ($start > 1){
+            $html .= '<li class="np-pagination__item"><a href="#" class="np-pagination__link js-np-page" data-page="1">1</a></li>';
+            if ($start > 2){
+                $html .= '<li class="np-pagination__item np-pagination__ellipsis" aria-hidden="true">…</li>';
+            }
+        }
+        for ($i = $start; $i <= $end; $i++){
+            $html .= sprintf(
+                '<li class="np-pagination__item %1$s"><a href="#" class="np-pagination__link js-np-page" data-page="%2$d" %3$s>%2$d</a></li>',
+                $i === $current_page ? 'is-active' : '',
+                $i,
+                $i === $current_page ? 'aria-current="page"' : ''
+            );
+        }
+        if ($end < $total_pages){
+            if ($end < $total_pages - 1){
+                $html .= '<li class="np-pagination__item np-pagination__ellipsis" aria-hidden="true">…</li>';
+            }
+            $html .= sprintf('<li class="np-pagination__item"><a href="#" class="np-pagination__link js-np-page" data-page="%1$d">%1$d</a></li>', $total_pages);
+        }
+        $html .= sprintf(
+            '<li class="np-pagination__item %1$s"><a href="#" class="np-pagination__link js-np-page" data-page="%2$d" aria-label="%3$s" %4$s>&raquo;</a></li>',
+            $current_page === $total_pages ? 'is-disabled' : '',
+            $next_page,
+            esc_attr__('Página siguiente','norpumps'),
+            $current_page === $total_pages ? 'tabindex="-1" aria-disabled="true"' : ''
+        );
+        $html .= '</ul></nav>';
+        return $html;
     }
 }
