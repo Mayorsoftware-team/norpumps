@@ -121,35 +121,34 @@ class NorPumps_Modules_Store {
             if (count($parts)==2){ $label = sanitize_text_field($parts[0]); $slug = sanitize_title($parts[1]); if ($slug) $groups[]=['label'=>$label?:$slug,'slug'=>$slug]; }
         }
         $default_page = max(1, intval($atts['page']));
-        $default_min_price = is_numeric($atts['price_min']) ? floatval($atts['price_min']) : 0;
-        $default_max_price = is_numeric($atts['price_max']) ? floatval($atts['price_max']) : 0;
         $price_min_defined = is_array($raw_atts) ? array_key_exists('price_min', $raw_atts) : false;
         $price_max_defined = is_array($raw_atts) ? array_key_exists('price_max', $raw_atts) : false;
-        if (!$price_min_defined || !$price_max_defined){
-            $bounds = $this->get_price_bounds_for_current_request();
-            if (!$price_min_defined && isset($bounds['min']) && $bounds['min'] !== null){
-                $default_min_price = floatval($bounds['min']);
-            }
-            if (!$price_max_defined && isset($bounds['max']) && $bounds['max'] !== null){
-                $default_max_price = floatval($bounds['max']);
-            }
-        }
-        if ($default_min_price > $default_max_price){
-            $tmp = $default_min_price;
-            $default_min_price = $default_max_price;
-            $default_max_price = $tmp;
-        }
-        $default_min_price = round($default_min_price, 2);
-        $default_max_price = round($default_max_price, 2);
+        $attribute_min_price = $price_min_defined && is_numeric($atts['price_min']) ? floatval($atts['price_min']) : null;
+        $attribute_max_price = $price_max_defined && is_numeric($atts['price_max']) ? floatval($atts['price_max']) : null;
+
+        $query_args = $this->build_wc_query_from_request([
+            'per_page' => $per_page,
+            'page'     => $default_page,
+        ]);
+
+        $price_context = $this->resolve_price_context($query_args, [
+            'attribute_floor_defined'  => $price_min_defined,
+            'attribute_floor'          => $attribute_min_price,
+            'attribute_ceiling_defined'=> $price_max_defined,
+            'attribute_ceiling'        => $attribute_max_price,
+            'requested_min'            => isset($_GET['min_price']) ? $_GET['min_price'] : null,
+            'requested_max'            => isset($_GET['max_price']) ? $_GET['max_price'] : null,
+        ]);
+
+        $default_min_price   = $price_context['slider_min'];
+        $default_max_price   = $price_context['slider_max'];
+        $requested_min_price = $price_context['current_min'];
+        $requested_max_price = $price_context['current_max'];
+        $available_min_price = $price_context['available_min'];
+        $available_max_price = $price_context['available_max'];
+
         $requested_per_page = max(1, min(60, intval(isset($_GET['per_page']) ? $_GET['per_page'] : $per_page)));
         $requested_page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : $default_page));
-        $requested_min_price = isset($_GET['min_price']) ? floatval($_GET['min_price']) : $default_min_price;
-        $requested_max_price = isset($_GET['max_price']) ? floatval($_GET['max_price']) : $default_max_price;
-        if ($requested_min_price > $requested_max_price){ $tmp = $requested_min_price; $requested_min_price = $requested_max_price; $requested_max_price = $tmp; }
-        $requested_min_price = max($default_min_price, min($default_max_price, $requested_min_price));
-        $requested_max_price = max($requested_min_price, min($default_max_price, $requested_max_price));
-        $requested_min_price = round($requested_min_price, 2);
-        $requested_max_price = round($requested_max_price, 2);
         $search_query = sanitize_text_field(norpumps_array_get($_GET,'s',''));
         $allowed_orderby = ['menu_order title','price','price-desc','date','popularity'];
         $orderby_query = sanitize_text_field(norpumps_array_get($_GET,'orderby','menu_order title'));
@@ -164,16 +163,23 @@ class NorPumps_Modules_Store {
         include __DIR__.'/templates/store.php';
         return ob_get_clean();
     }
-    private function get_price_bounds_for_current_request(){
+    private function get_price_bounds_for_current_request($defaults = []){
+        $args = $this->build_wc_query_from_request($defaults);
+        return $this->get_price_bounds_from_args($args, true);
+    }
+    private function get_price_bounds_from_args($args, $ignore_price_filters = true){
         if (!function_exists('wc_get_products')){
             return ['min'=>null,'max'=>null];
         }
-        $args = $this->build_wc_query_from_request();
-        $args['paginate'] = false;
-        $args['limit'] = -1;
-        unset($args['page'], $args['min_price'], $args['max_price']);
-        $args['return'] = 'ids';
-        $products = wc_get_products($args);
+        $query_args = $args;
+        if ($ignore_price_filters){
+            unset($query_args['min_price'], $query_args['max_price']);
+        }
+        $query_args['paginate'] = false;
+        $query_args['limit'] = -1;
+        $query_args['return'] = 'ids';
+        unset($query_args['page']);
+        $products = wc_get_products($query_args);
         if (is_wp_error($products)){
             return ['min'=>null,'max'=>null];
         }
@@ -220,18 +226,68 @@ class NorPumps_Modules_Store {
         }
         return ['min'=>$min, 'max'=>$max];
     }
-    private function build_wc_query_from_request(){
-        $limit = max(1, min(60, intval(norpumps_array_get($_REQUEST,'per_page',12))));
+    private function resolve_price_context($args, $options = []){
+        $options = wp_parse_args($options, [
+            'attribute_floor_defined'   => false,
+            'attribute_floor'           => null,
+            'attribute_ceiling_defined' => false,
+            'attribute_ceiling'         => null,
+            'requested_min'             => null,
+            'requested_max'             => null,
+        ]);
+        $bounds = $this->get_price_bounds_from_args($args, true);
+        $available_min = $bounds['min'];
+        $available_max = $bounds['max'];
+        $slider_min = $options['attribute_floor_defined'] && $options['attribute_floor'] !== null ? floatval($options['attribute_floor']) : ($available_min !== null ? floatval($available_min) : 0);
+        $slider_max = $options['attribute_ceiling_defined'] && $options['attribute_ceiling'] !== null ? floatval($options['attribute_ceiling']) : ($available_max !== null ? floatval($available_max) : $slider_min);
+        if (!is_numeric($slider_min)){
+            $slider_min = 0;
+        }
+        if (!is_numeric($slider_max)){
+            $slider_max = $slider_min;
+        }
+        if ($slider_min > $slider_max){
+            $tmp = $slider_min; $slider_min = $slider_max; $slider_max = $tmp;
+        }
+        $requested_min = $options['requested_min'];
+        $requested_max = $options['requested_max'];
+        $requested_min = ($requested_min !== null && $requested_min !== '') ? floatval($requested_min) : $slider_min;
+        $requested_max = ($requested_max !== null && $requested_max !== '') ? floatval($requested_max) : $slider_max;
+        if ($requested_min > $requested_max){
+            $tmp = $requested_min; $requested_min = $requested_max; $requested_max = $tmp;
+        }
+        $requested_min = max($slider_min, min($requested_min, $slider_max));
+        $requested_max = max($requested_min, min($requested_max, $slider_max));
+        $slider_min = round($slider_min, 2);
+        $slider_max = round($slider_max, 2);
+        $requested_min = round($requested_min, 2);
+        $requested_max = round($requested_max, 2);
+        return [
+            'available_min' => $available_min !== null ? round(floatval($available_min), 2) : null,
+            'available_max' => $available_max !== null ? round(floatval($available_max), 2) : null,
+            'slider_min'    => $slider_min,
+            'slider_max'    => $slider_max,
+            'current_min'   => $requested_min,
+            'current_max'   => $requested_max,
+        ];
+    }
+    private function build_wc_query_from_request($base_defaults = []){
+        $defaults = wp_parse_args($base_defaults, [
+            'per_page' => 12,
+            'page'     => 1,
+            'orderby'  => 'menu_order title',
+        ]);
+        $limit = max(1, min(60, intval(norpumps_array_get($_REQUEST,'per_page',$defaults['per_page']))));
         $args = [
             'status'=>'publish',
             'limit'=>$limit,
-            'page'=>max(1, intval(norpumps_array_get($_REQUEST,'page',1))),
+            'page'=>max(1, intval(norpumps_array_get($_REQUEST,'page',$defaults['page']))),
             'paginate'=>true,
         ];
         $allowed_orderby = ['menu_order title','price','price-desc','date','popularity'];
-        $orderby_raw = sanitize_text_field(norpumps_array_get($_REQUEST,'orderby','menu_order title'));
+        $orderby_raw = sanitize_text_field(norpumps_array_get($_REQUEST,'orderby',$defaults['orderby']));
         if (!in_array($orderby_raw, $allowed_orderby, true)){
-            $orderby_raw = 'menu_order title';
+            $orderby_raw = $defaults['orderby'];
         }
         $orderby = $orderby_raw === 'menu_order title' ? 'menu_order' : $orderby_raw;
         $order = strtoupper(sanitize_text_field(norpumps_array_get($_REQUEST,'order','')));
@@ -261,9 +317,6 @@ class NorPumps_Modules_Store {
                 }
             }
         }
-        $min = isset($_REQUEST['min_price']) ? floatval($_REQUEST['min_price']) : null;
-        $max = isset($_REQUEST['max_price']) ? floatval($_REQUEST['max_price']) : null;
-        if ($min !== null || $max !== null){ $args['min_price']=$min; $args['max_price']=$max; }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
         if ($search !== ''){ $args['s'] = $search; }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
@@ -271,7 +324,37 @@ class NorPumps_Modules_Store {
     }
     public function ajax_query(){
         check_ajax_referer('norpumps_store','nonce');
-        $args = $this->build_wc_query_from_request();
+        $base_defaults = [
+            'per_page' => max(1, min(60, intval(norpumps_array_get($_REQUEST,'per_page',12)))),
+            'page'     => max(1, intval(norpumps_array_get($_REQUEST,'page',1))),
+        ];
+        $args = $this->build_wc_query_from_request($base_defaults);
+
+        $floor_defined = intval(norpumps_array_get($_REQUEST,'slider_floor_defined',0)) === 1;
+        $ceiling_defined = intval(norpumps_array_get($_REQUEST,'slider_ceiling_defined',0)) === 1;
+        $attribute_floor = $floor_defined ? floatval(norpumps_array_get($_REQUEST,'slider_floor',0)) : null;
+        $attribute_ceiling = $ceiling_defined ? floatval(norpumps_array_get($_REQUEST,'slider_ceiling',0)) : null;
+
+        $price_context = $this->resolve_price_context($args, [
+            'attribute_floor_defined'   => $floor_defined,
+            'attribute_floor'           => $attribute_floor,
+            'attribute_ceiling_defined' => $ceiling_defined,
+            'attribute_ceiling'         => $attribute_ceiling,
+            'requested_min'             => norpumps_array_get($_REQUEST,'min_price',null),
+            'requested_max'             => norpumps_array_get($_REQUEST,'max_price',null),
+        ]);
+
+        if ($price_context['current_min'] !== null){
+            $args['min_price'] = $price_context['current_min'];
+        } else {
+            unset($args['min_price']);
+        }
+        if ($price_context['current_max'] !== null){
+            $args['max_price'] = $price_context['current_max'];
+        } else {
+            unset($args['max_price']);
+        }
+
         $results = wc_get_products($args);
         $products = is_array($results) ? norpumps_array_get($results, 'products', []) : (property_exists($results, 'products') ? $results->products : []);
         $total = is_array($results) ? intval(norpumps_array_get($results, 'total', 0)) : (property_exists($results, 'total') ? intval($results->total) : 0);
@@ -294,6 +377,12 @@ class NorPumps_Modules_Store {
             'page'=>max(1, intval($args['page'] ?? 1)),
             'max_pages'=>max(1, $max_pages),
             'args'=>$args,
+            'price'=>[
+                'slider'=>['min'=>$price_context['slider_min'], 'max'=>$price_context['slider_max']],
+                'current'=>['min'=>$price_context['current_min'], 'max'=>$price_context['current_max']],
+                'available'=>['min'=>$price_context['available_min'], 'max'=>$price_context['available_max']],
+                'defined'=>['floor'=>$floor_defined, 'ceiling'=>$ceiling_defined],
+            ],
         ]);
     }
     private function render_pagination_html($current_page, $total_pages){

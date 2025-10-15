@@ -1,9 +1,13 @@
 <?php if (!defined('ABSPATH')) { exit; } ?>
 <?php
-$default_min = isset($default_min_price) ? floatval($default_min_price) : (isset($atts['price_min']) ? floatval($atts['price_min']) : 0);
-$default_max = isset($default_max_price) ? floatval($default_max_price) : (isset($atts['price_max']) ? floatval($atts['price_max']) : 10000);
-$current_min = isset($requested_min_price) ? floatval($requested_min_price) : $default_min;
-$current_max = isset($requested_max_price) ? floatval($requested_max_price) : $default_max;
+$slider_min = isset($default_min_price) ? floatval($default_min_price) : 0;
+$slider_max = isset($default_max_price) ? floatval($default_max_price) : $slider_min;
+$current_min = isset($requested_min_price) ? floatval($requested_min_price) : $slider_min;
+$current_max = isset($requested_max_price) ? floatval($requested_max_price) : $slider_max;
+$available_min = isset($available_min_price) ? $available_min_price : null;
+$available_max = isset($available_max_price) ? $available_max_price : null;
+$price_floor_value = (isset($price_min_defined) && $price_min_defined && isset($attribute_min_price)) ? floatval($attribute_min_price) : $slider_min;
+$price_ceiling_value = (isset($price_max_defined) && $price_max_defined && isset($attribute_max_price)) ? floatval($attribute_max_price) : $slider_max;
 $current_per_page = isset($requested_per_page) ? intval($requested_per_page) : (isset($per_page) ? intval($per_page) : 12);
 $current_page = isset($requested_page) ? intval($requested_page) : 1;
 $default_page_attr = isset($default_page) ? intval($default_page) : 1;
@@ -12,7 +16,7 @@ $search_value = isset($search_query) ? $search_query : '';
 $orderby_value = isset($orderby_query) ? $orderby_query : 'menu_order title';
 if (!isset($filters_arr)) $filters_arr = [];
 ?>
-<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-default-min-price="<?php echo esc_attr($default_min); ?>" data-default-max-price="<?php echo esc_attr($default_max); ?>">
+<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-default-min-price="<?php echo esc_attr($slider_min); ?>" data-default-max-price="<?php echo esc_attr($slider_max); ?>" data-price-floor="<?php echo esc_attr($price_floor_value); ?>" data-price-ceiling="<?php echo esc_attr($price_ceiling_value); ?>" data-price-floor-defined="<?php echo !empty($price_min_defined) ? '1' : '0'; ?>" data-price-ceiling-defined="<?php echo !empty($price_max_defined) ? '1' : '0'; ?>" data-price-available-min="<?php echo $available_min !== null ? esc_attr($available_min) : ''; ?>" data-price-available-max="<?php echo $available_max !== null ? esc_attr($available_max) : ''; ?>">
   <div class="norpumps-store__header">
     <div class="norpumps-store__orderby">
       <label><?php esc_html_e('Ordenar…','norpumps'); ?></label>
@@ -36,14 +40,22 @@ if (!isset($filters_arr)) $filters_arr = [];
         <div class="np-filter__head"><?php esc_html_e('PRECIO','norpumps'); ?></div>
         <div class="np-filter__body">
           <div class="np-price">
-            <div class="np-price__slider" data-min="<?php echo esc_attr($default_min); ?>" data-max="<?php echo esc_attr($default_max); ?>">
-              <input type="range" class="np-range-min" min="<?php echo esc_attr($default_min); ?>" max="<?php echo esc_attr($default_max); ?>" value="<?php echo esc_attr($current_min); ?>">
-              <input type="range" class="np-range-max" min="<?php echo esc_attr($default_min); ?>" max="<?php echo esc_attr($default_max); ?>" value="<?php echo esc_attr($current_max); ?>">
+            <div class="np-price__rail" data-min="<?php echo esc_attr($slider_min); ?>" data-max="<?php echo esc_attr($slider_max); ?>">
+              <div class="np-price__slider" data-min="<?php echo esc_attr($slider_min); ?>" data-max="<?php echo esc_attr($slider_max); ?>">
+                <input type="range" class="np-range-min" min="<?php echo esc_attr($slider_min); ?>" max="<?php echo esc_attr($slider_max); ?>" value="<?php echo esc_attr($current_min); ?>">
+                <input type="range" class="np-range-max" min="<?php echo esc_attr($slider_min); ?>" max="<?php echo esc_attr($slider_max); ?>" value="<?php echo esc_attr($current_max); ?>">
+              </div>
             </div>
             <div class="np-price__labels">
-              <span class="np-price-min"><?php echo esc_html($current_min); ?></span>
-              <span>—</span>
-              <span class="np-price-max"><?php echo esc_html($current_max); ?></span>
+              <div class="np-price__label">
+                <span class="np-price__label-caption"><?php esc_html_e('Mínimo','norpumps'); ?></span>
+                <span class="np-price__label-value"><span class="np-price-min"><?php echo esc_html($current_min); ?></span></span>
+              </div>
+              <span class="np-price__label-separator">—</span>
+              <div class="np-price__label">
+                <span class="np-price__label-caption"><?php esc_html_e('Máximo','norpumps'); ?></span>
+                <span class="np-price__label-value"><span class="np-price-max"><?php echo esc_html($current_max); ?></span></span>
+              </div>
             </div>
           </div>
         </div>

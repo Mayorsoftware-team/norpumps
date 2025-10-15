@@ -51,9 +51,50 @@ jQuery(function($){
     const val = parseFloat($root.data('defaultMaxPrice'));
     return isFiniteNumber(val) ? val : null;
   }
+  function setDefaultPriceBounds($root, min, max){
+    if (isFiniteNumber(min)){
+      $root.data('defaultMinPrice', min);
+      $root.attr('data-default-min-price', min);
+    }
+    if (isFiniteNumber(max)){
+      $root.data('defaultMaxPrice', max);
+      $root.attr('data-default-max-price', max);
+    }
+  }
+  function setSliderDefinition($root, floorDefined, ceilingDefined){
+    const floorFlag = floorDefined ? 1 : 0;
+    const ceilingFlag = ceilingDefined ? 1 : 0;
+    $root.data('priceFloorDefined', floorFlag);
+    $root.attr('data-price-floor-defined', floorFlag);
+    $root.data('priceCeilingDefined', ceilingFlag);
+    $root.attr('data-price-ceiling-defined', ceilingFlag);
+  }
+  function setSliderExtremes($root, min, max){
+    const $wrap = $root.find('.np-price__slider');
+    const $rail = $root.find('.np-price__rail');
+    const $minInput = $wrap.find('.np-range-min');
+    const $maxInput = $wrap.find('.np-range-max');
+    if (isFiniteNumber(min)){
+      $wrap.attr('data-min', min).data('min', min);
+      $rail.attr('data-min', min).data('min', min);
+      $minInput.attr('min', min);
+      $maxInput.attr('min', min);
+      $root.data('priceFloor', min);
+      $root.attr('data-price-floor', min);
+    }
+    if (isFiniteNumber(max)){
+      $wrap.attr('data-max', max).data('max', max);
+      $rail.attr('data-max', max).data('max', max);
+      $minInput.attr('max', max);
+      $maxInput.attr('max', max);
+      $root.data('priceCeiling', max);
+      $root.attr('data-price-ceiling', max);
+    }
+  }
   function syncPriceUI($root){
     const $wrap = $root.find('.np-price__slider');
     if (!$wrap.length) return {};
+    const $rail = $root.find('.np-price__rail');
     const sliderMinData = parseFloat($wrap.data('min'));
     const sliderMaxData = parseFloat($wrap.data('max'));
     const $min = $wrap.find('.np-range-min');
@@ -74,9 +115,13 @@ jQuery(function($){
       const pctMax = Math.min(100, Math.max(0, ((vmax - sliderMin) / range) * 100));
       $wrap.css('--np-min', pctMin + '%');
       $wrap.css('--np-max', pctMax + '%');
+      $rail.css('--np-min', pctMin + '%');
+      $rail.css('--np-max', pctMax + '%');
     } else {
       $wrap.css('--np-min', '0%');
       $wrap.css('--np-max', '100%');
+      $rail.css('--np-min', '0%');
+      $rail.css('--np-max', '100%');
     }
     return {min:vmin, max:vmax};
   }
@@ -93,6 +138,18 @@ jQuery(function($){
     const price = syncPriceUI($root);
     if (price.min != null) data.min_price = price.min;
     if (price.max != null) data.max_price = price.max;
+    const floorDefined = parseInt($root.data('priceFloorDefined'), 10) === 1;
+    const ceilingDefined = parseInt($root.data('priceCeilingDefined'), 10) === 1;
+    const sliderFloor = parseFloat($root.data('priceFloor'));
+    const sliderCeiling = parseFloat($root.data('priceCeiling'));
+    data.slider_floor_defined = floorDefined ? 1 : 0;
+    data.slider_ceiling_defined = ceilingDefined ? 1 : 0;
+    if (floorDefined && isFiniteNumber(sliderFloor)){
+      data.slider_floor = sliderFloor;
+    }
+    if (ceilingDefined && isFiniteNumber(sliderCeiling)){
+      data.slider_ceiling = sliderCeiling;
+    }
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
       const group = $(this).data('group');
       const vals = $(this).find('input:checked').map(function(){ return this.value; }).get();
@@ -138,6 +195,42 @@ jQuery(function($){
       $root.find('.js-np-pagination').html(resp.data.pagination_html || '');
       if (resp.data.page){ setCurrentPage($root, resp.data.page); }
       if (resp.data.args && resp.data.args.limit){ setPerPage($root, resp.data.args.limit); }
+      if (resp.data.price){
+        const priceMeta = resp.data.price || {};
+        const slider = priceMeta.slider || {};
+        const current = priceMeta.current || {};
+        const defined = priceMeta.defined || {};
+        const available = priceMeta.available || {};
+        const sliderMin = parseFloat(slider.min);
+        const sliderMax = parseFloat(slider.max);
+        const currentMin = parseFloat(current.min);
+        const currentMax = parseFloat(current.max);
+        setSliderExtremes($root, sliderMin, sliderMax);
+        setDefaultPriceBounds($root, sliderMin, sliderMax);
+        setSliderDefinition($root, !!defined.floor, !!defined.ceiling);
+        const $wrap = $root.find('.np-price__slider');
+        if ($wrap.length){
+          const $minInput = $wrap.find('.np-range-min');
+          const $maxInput = $wrap.find('.np-range-max');
+          if (isFiniteNumber(currentMin)){ $minInput.val(currentMin); }
+          if (isFiniteNumber(currentMax)){ $maxInput.val(currentMax); }
+        }
+        if (available){
+          if (available.min != null && available.min !== ''){
+            $root.attr('data-price-available-min', available.min);
+          } else {
+            $root.removeAttr('data-price-available-min');
+          }
+          if (available.max != null && available.max !== ''){
+            $root.attr('data-price-available-max', available.max);
+          } else {
+            $root.removeAttr('data-price-available-max');
+          }
+        }
+        syncPriceUI($root);
+      } else {
+        syncPriceUI($root);
+      }
       const finalPayload = buildQuery($root);
       const qs = toQuery($root, finalPayload);
       history.replaceState(null, '', qs ? (location.pathname + '?' + qs) : location.pathname);
@@ -168,6 +261,13 @@ jQuery(function($){
     const $root = $(this);
     setPerPage($root, getPerPage($root));
     setCurrentPage($root, getCurrentPage($root));
+    setDefaultPriceBounds($root, parseFloat($root.data('defaultMinPrice')), parseFloat($root.data('defaultMaxPrice')));
+    setSliderDefinition(
+      $root,
+      parseInt($root.data('priceFloorDefined'), 10) === 1,
+      parseInt($root.data('priceCeilingDefined'), 10) === 1
+    );
+    setSliderExtremes($root, parseFloat($root.data('defaultMinPrice')), parseFloat($root.data('defaultMaxPrice')));
 
     $root.on('change', '.np-orderby select', function(){ resetToFirstPage($root); load($root, 1, {scroll:true}); });
     $root.on('input change', '.np-price__slider input[type=range]', function(){ syncPriceUI($root); })
