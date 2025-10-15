@@ -13,8 +13,10 @@
 .norpumps-filters .np-checklist .depth-1{ padding-left:12px; opacity:.95 }
 .norpumps-filters .np-checklist .depth-2{ padding-left:24px; opacity:.9 }
 .norpumps-filters .np-all{ display:block; margin:4px 0 10px; font-weight:600; }
-.np-price__slider{ position:relative; height:30px; }
-.np-price__slider input[type=range]{ position:absolute; left:0; right:0; width:100%; pointer-events:none; -webkit-appearance:none; background:transparent; height:30px; }
+.np-price__slider{ position:relative; height:30px; --np-range-track:#d4e6e7; --np-range-fill:#083640; --np-min:0%; --np-max:100%; }
+.np-price__slider::before{ content:""; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); height:6px; border-radius:999px; background:var(--np-range-track); }
+.np-price__slider::after{ content:""; position:absolute; left:var(--np-min); width:calc(var(--np-max) - var(--np-min)); top:50%; transform:translateY(-50%); height:6px; border-radius:999px; background:var(--np-range-fill); }
+.np-price__slider input[type=range]{ position:absolute; left:0; right:0; width:100%; pointer-events:none; -webkit-appearance:none; background:transparent; height:30px; z-index:1; }
 .np-price__slider input::-webkit-slider-thumb{ -webkit-appearance:none; pointer-events:auto; width:16px; height:16px; border-radius:50%; background:#0f5b62; border:2px solid #fff; box-shadow:0 0 0 2px #0f5b62; }
 .np-price__slider input::-moz-range-thumb{ pointer-events:auto; width:16px; height:16px; border-radius:50%; background:#0f5b62; border:2px solid #fff; }
 .np-price__labels{ display:flex; justify-content:space-between; font-size:12px; color:#333; margin-top:8px; }

@@ -105,6 +105,7 @@ class NorPumps_Modules_Store {
         wp_send_json_success($out);
     }
     public function shortcode_store($atts){
+        $raw_atts = $atts;
         $atts = shortcode_atts([
             'columns'=>4,
             'filters'=>'price,cat',
@@ -120,8 +121,26 @@ class NorPumps_Modules_Store {
             if (count($parts)==2){ $label = sanitize_text_field($parts[0]); $slug = sanitize_title($parts[1]); if ($slug) $groups[]=['label'=>$label?:$slug,'slug'=>$slug]; }
         }
         $default_page = max(1, intval($atts['page']));
-        $default_min_price = floatval($atts['price_min']);
-        $default_max_price = floatval($atts['price_max']);
+        $default_min_price = is_numeric($atts['price_min']) ? floatval($atts['price_min']) : 0;
+        $default_max_price = is_numeric($atts['price_max']) ? floatval($atts['price_max']) : 0;
+        $price_min_defined = is_array($raw_atts) ? array_key_exists('price_min', $raw_atts) : false;
+        $price_max_defined = is_array($raw_atts) ? array_key_exists('price_max', $raw_atts) : false;
+        if (!$price_min_defined || !$price_max_defined){
+            $bounds = $this->get_price_bounds_for_current_request();
+            if (!$price_min_defined && isset($bounds['min']) && $bounds['min'] !== null){
+                $default_min_price = floatval($bounds['min']);
+            }
+            if (!$price_max_defined && isset($bounds['max']) && $bounds['max'] !== null){
+                $default_max_price = floatval($bounds['max']);
+            }
+        }
+        if ($default_min_price > $default_max_price){
+            $tmp = $default_min_price;
+            $default_min_price = $default_max_price;
+            $default_max_price = $tmp;
+        }
+        $default_min_price = round($default_min_price, 2);
+        $default_max_price = round($default_max_price, 2);
         $requested_per_page = max(1, min(60, intval(isset($_GET['per_page']) ? $_GET['per_page'] : $per_page)));
         $requested_page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : $default_page));
         $requested_min_price = isset($_GET['min_price']) ? floatval($_GET['min_price']) : $default_min_price;
@@ -129,6 +148,8 @@ class NorPumps_Modules_Store {
         if ($requested_min_price > $requested_max_price){ $tmp = $requested_min_price; $requested_min_price = $requested_max_price; $requested_max_price = $tmp; }
         $requested_min_price = max($default_min_price, min($default_max_price, $requested_min_price));
         $requested_max_price = max($requested_min_price, min($default_max_price, $requested_max_price));
+        $requested_min_price = round($requested_min_price, 2);
+        $requested_max_price = round($requested_max_price, 2);
         $search_query = sanitize_text_field(norpumps_array_get($_GET,'s',''));
         $allowed_orderby = ['menu_order title','price','price-desc','date','popularity'];
         $orderby_query = sanitize_text_field(norpumps_array_get($_GET,'orderby','menu_order title'));
@@ -142,6 +163,62 @@ class NorPumps_Modules_Store {
         $filters_arr = array_filter(array_map('trim', explode(',', $atts['filters'])));
         include __DIR__.'/templates/store.php';
         return ob_get_clean();
+    }
+    private function get_price_bounds_for_current_request(){
+        if (!function_exists('wc_get_products')){
+            return ['min'=>null,'max'=>null];
+        }
+        $args = $this->build_wc_query_from_request();
+        $args['paginate'] = false;
+        $args['limit'] = -1;
+        unset($args['page'], $args['min_price'], $args['max_price']);
+        $args['return'] = 'ids';
+        $products = wc_get_products($args);
+        if (is_wp_error($products)){
+            return ['min'=>null,'max'=>null];
+        }
+        $ids = [];
+        if (is_array($products)){
+            $ids = array_map('intval', $products);
+        } elseif (is_object($products) && property_exists($products, 'products')){
+            $ids = array_map(function($item){
+                if (is_numeric($item)) return intval($item);
+                if (is_object($item) && method_exists($item, 'get_id')) return intval($item->get_id());
+                return null;
+            }, $products->products);
+            $ids = array_filter($ids, function($value){ return $value !== null; });
+        }
+        $ids = array_values(array_unique(array_filter($ids, function($value){ return $value !== null; })));
+        if (!$ids){
+            return ['min'=>null,'max'=>null];
+        }
+        global $wpdb;
+        $min = null; $max = null;
+        foreach (array_chunk($ids, 300) as $chunk){
+            $placeholders = implode(',', array_fill(0, count($chunk), '%d'));
+            $sql = "SELECT MIN(CAST(meta_value AS DECIMAL(20,4))) AS min_price, MAX(CAST(meta_value AS DECIMAL(20,4))) AS max_price FROM {$wpdb->postmeta} WHERE meta_key = '_price' AND post_id IN ($placeholders)";
+            $row = $wpdb->get_row($wpdb->prepare($sql, $chunk));
+            if (!$row){
+                continue;
+            }
+            if ($row->min_price !== null){
+                $value = floatval($row->min_price);
+                $min = $min === null ? $value : min($min, $value);
+            }
+            if ($row->max_price !== null){
+                $value = floatval($row->max_price);
+                $max = $max === null ? $value : max($max, $value);
+            }
+        }
+        if ($min === null && $max === null){
+            return ['min'=>null,'max'=>null];
+        }
+        if ($min !== null){ $min = round($min, 2); }
+        if ($max !== null){ $max = round($max, 2); }
+        if ($min !== null && $max !== null && $min > $max){
+            $tmp = $min; $min = $max; $max = $tmp;
+        }
+        return ['min'=>$min, 'max'=>$max];
     }
     private function build_wc_query_from_request(){
         $limit = max(1, min(60, intval(norpumps_array_get($_REQUEST,'per_page',12))));
