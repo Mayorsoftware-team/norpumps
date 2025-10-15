@@ -75,7 +75,7 @@ if (!isset($filters_arr)) $filters_arr = [];
     </aside>
 
     <section class="norpumps-grid">
-      <div class="np-grid js-np-grid" data-columns="<?php echo esc_attr($columns); ?>"></div>
+      <div class="np-grid js-np-grid products" data-columns="<?php echo esc_attr($columns); ?>"></div>
       <div class="np-pagination js-np-pagination"></div>
     </section>
   </div>

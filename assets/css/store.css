@@ -30,6 +30,7 @@
 .np-card__title{ font-size:16px; margin:6px 0 8px; min-height:44px; }
 .np-card__price{ font-weight:700; margin-bottom:8px; }
 .np-card__actions .button{ background:#1f7c85; color:#fff; border:none; padding:8px 10px; border-radius:8px; }
+.np-card__actions .ajax_add_to_cart.added::after{ content:"\2713"; margin-left:.5rem; font-weight:700; display:inline-block; transform:translateY(-1px); }
 .np-pagination{ margin:20px 0; text-align:center; }
 /* Admin pretty */
 .norpumps-admin .np-card{ background:#fff; border:1px solid #e7eef2; border-radius:12px; padding:14px; }
