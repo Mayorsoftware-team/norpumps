@@ -54,16 +54,30 @@ jQuery(function($){
   function syncPriceUI($root){
     const $wrap = $root.find('.np-price__slider');
     if (!$wrap.length) return {};
-    const sliderMin = parseFloat($wrap.data('min'));
-    const sliderMax = parseFloat($wrap.data('max'));
+    const sliderMinData = parseFloat($wrap.data('min'));
+    const sliderMaxData = parseFloat($wrap.data('max'));
     const $min = $wrap.find('.np-range-min');
     const $max = $wrap.find('.np-range-max');
+    const minAttr = parseFloat($min.attr('min'));
+    const maxAttr = parseFloat($max.attr('max'));
+    const sliderMin = isFiniteNumber(sliderMinData) ? sliderMinData : (isFiniteNumber(minAttr) ? minAttr : 0);
+    const sliderMax = isFiniteNumber(sliderMaxData) ? sliderMaxData : (isFiniteNumber(maxAttr) ? maxAttr : sliderMin);
     let vmin = clamp($min.val(), sliderMin, sliderMax);
     let vmax = clamp($max.val(), sliderMin, sliderMax);
     if (vmin > vmax){ const tmp = vmin; vmin = vmax; vmax = tmp; }
     $min.val(vmin); $max.val(vmax);
     $root.find('.np-price-min').text(vmin);
     $root.find('.np-price-max').text(vmax);
+    if (isFiniteNumber(sliderMax) && isFiniteNumber(sliderMin) && sliderMax > sliderMin){
+      const range = sliderMax - sliderMin;
+      const pctMin = Math.min(100, Math.max(0, ((vmin - sliderMin) / range) * 100));
+      const pctMax = Math.min(100, Math.max(0, ((vmax - sliderMin) / range) * 100));
+      $wrap.css('--np-min', pctMin + '%');
+      $wrap.css('--np-max', pctMax + '%');
+    } else {
+      $wrap.css('--np-min', '0%');
+      $wrap.css('--np-max', '100%');
+    }
     return {min:vmin, max:vmax};
   }
   function buildQuery($root){
