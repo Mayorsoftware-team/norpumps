@@ -5,6 +5,35 @@ jQuery(function($){
   };
   const SCROLL_OFFSET = 120;
   const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
+  const localeTag = (NorpumpsStore.locale || 'es-ES').replace('_','-');
+  const currencyCode = NorpumpsStore.currency || 'USD';
+  const priceDecimals = parseInt(NorpumpsStore.price_decimals, 10);
+  const resolvedDecimals = isFiniteNumber(priceDecimals) && priceDecimals >= 0 ? priceDecimals : 0;
+  const priceFormatter = (function(){
+    try {
+      return new Intl.NumberFormat(localeTag, {
+        style: 'currency',
+        currency: currencyCode,
+        minimumFractionDigits: resolvedDecimals,
+        maximumFractionDigits: resolvedDecimals,
+      });
+    } catch (e){
+      return {
+        format(value){
+          const num = Number(value) || 0;
+          return (NorpumpsStore.currency_symbol || '$') + num.toFixed(resolvedDecimals);
+        }
+      };
+    }
+  })();
+
+  function formatPrice(value){
+    const num = Number(value) || 0;
+    if (typeof priceFormatter.format === 'function'){
+      return priceFormatter.format(num);
+    }
+    return priceFormatter(num);
+  }
 
   function getDefaultPerPage($root){
     const val = parseInt($root.data('defaultPerPage'), 10);
@@ -54,6 +83,20 @@ jQuery(function($){
         data['cat_'+group] = vals.join(',');
       }
     });
+    const $priceRange = $root.find('.np-price-range');
+    if ($priceRange.length){
+      const baseMin = parseFloat($priceRange.data('baseMin'));
+      const baseMax = parseFloat($priceRange.data('baseMax'));
+      const currentMin = parseFloat($priceRange.data('currentMin'));
+      const currentMax = parseFloat($priceRange.data('currentMax'));
+      const hasBase = isFiniteNumber(baseMin) && isFiniteNumber(baseMax) && baseMax >= baseMin;
+      if (hasBase && isFiniteNumber(currentMin) && isFiniteNumber(currentMax)){
+        if (currentMin > baseMin || currentMax < baseMax){
+          data.price_min = currentMin;
+          data.price_max = currentMax;
+        }
+      }
+    }
     return data;
   }
   function toQuery($root, obj){
@@ -113,6 +156,106 @@ jQuery(function($){
     });
   }
 
+  function setPriceRangeData($range, minVal, maxVal){
+    $range.data('currentMin', minVal);
+    $range.data('currentMax', maxVal);
+    $range.attr('data-current-min', minVal);
+    $range.attr('data-current-max', maxVal);
+  }
+
+  function updatePriceRangeUI($range){
+    const baseMin = parseFloat($range.data('baseMin'));
+    const baseMax = parseFloat($range.data('baseMax'));
+    const currentMin = parseFloat($range.data('currentMin'));
+    const currentMax = parseFloat($range.data('currentMax'));
+    const $track = $range.find('.np-price-range__track');
+    if (isFiniteNumber(baseMin) && isFiniteNumber(baseMax) && baseMax > baseMin && $track.length){
+      const minPct = Math.max(0, Math.min(100, ((currentMin - baseMin) / (baseMax - baseMin)) * 100));
+      const maxPct = Math.max(0, Math.min(100, ((currentMax - baseMin) / (baseMax - baseMin)) * 100));
+      $track.css('--min', minPct + '%');
+      $track.css('--max', maxPct + '%');
+    }
+    if (isFiniteNumber(currentMin)){
+      $range.find('.np-price-value--min').text(formatPrice(currentMin));
+    }
+    if (isFiniteNumber(currentMax)){
+      $range.find('.np-price-value--max').text(formatPrice(currentMax));
+    }
+  }
+
+  function clampPriceRange(baseMin, baseMax, value){
+    if (!isFiniteNumber(value)) return value;
+    return Math.min(baseMax, Math.max(baseMin, value));
+  }
+
+  function adjustPriceRange($range, changed){
+    const baseMin = parseFloat($range.data('baseMin'));
+    const baseMax = parseFloat($range.data('baseMax'));
+    const stepRaw = parseFloat($range.data('step'));
+    const step = (isFiniteNumber(stepRaw) && stepRaw > 0) ? stepRaw : 1;
+    const $minInput = $range.find('.np-price-range__input--min');
+    const $maxInput = $range.find('.np-price-range__input--max');
+    let minVal = parseFloat($minInput.val());
+    let maxVal = parseFloat($maxInput.val());
+    if (!isFiniteNumber(minVal)) minVal = baseMin;
+    if (!isFiniteNumber(maxVal)) maxVal = baseMax;
+    minVal = clampPriceRange(baseMin, baseMax, minVal);
+    maxVal = clampPriceRange(baseMin, baseMax, maxVal);
+    const minGap = step;
+    if (changed === 'min' && minVal > maxVal - minGap){
+      minVal = Math.min(maxVal - minGap, baseMax - minGap);
+    }
+    if (changed === 'max' && maxVal < minVal + minGap){
+      maxVal = Math.max(minVal + minGap, baseMin + minGap);
+    }
+    if (!isFiniteNumber(minVal) || !isFiniteNumber(maxVal) || maxVal < minVal){
+      minVal = baseMin;
+      maxVal = baseMax;
+    }
+    if (maxVal - minVal < minGap){
+      if (changed === 'min'){
+        maxVal = Math.min(baseMax, minVal + minGap);
+      } else {
+        minVal = Math.max(baseMin, maxVal - minGap);
+      }
+    }
+    minVal = clampPriceRange(baseMin, baseMax, minVal);
+    maxVal = clampPriceRange(baseMin, baseMax, maxVal);
+    minVal = parseFloat(minVal.toFixed(resolvedDecimals));
+    maxVal = parseFloat(maxVal.toFixed(resolvedDecimals));
+    $minInput.val(minVal);
+    $maxInput.val(maxVal);
+    setPriceRangeData($range, minVal, maxVal);
+    updatePriceRangeUI($range);
+  }
+
+  function initializePriceRange($root){
+    const $range = $root.find('.np-price-range');
+    if (!$range.length){
+      return;
+    }
+    const $minInput = $range.find('.np-price-range__input--min');
+    const $maxInput = $range.find('.np-price-range__input--max');
+    const baseMin = parseFloat($range.data('baseMin'));
+    const baseMax = parseFloat($range.data('baseMax'));
+    const stepRaw = parseFloat($range.data('step'));
+    const step = (isFiniteNumber(stepRaw) && stepRaw > 0) ? stepRaw : 1;
+    $minInput.attr({ min: baseMin, max: baseMax, step: step });
+    $maxInput.attr({ min: baseMin, max: baseMax, step: step });
+    adjustPriceRange($range);
+
+    $root.on('input', '.np-price-range__input', function(){
+      const isMin = $(this).hasClass('np-price-range__input--min');
+      adjustPriceRange($range, isMin ? 'min' : 'max');
+    });
+    $root.on('change', '.np-price-range__input', function(){
+      const isMin = $(this).hasClass('np-price-range__input--min');
+      adjustPriceRange($range, isMin ? 'min' : 'max');
+      resetToFirstPage($root);
+      load($root, 1, {scroll:true});
+    });
+  }
+
   $('.norpumps-store').each(function(){
     const $root = $(this);
     setPerPage($root, getPerPage($root));
@@ -129,6 +272,7 @@ jQuery(function($){
     });
 
     bindAllToggle($root);
+    initializePriceRange($root);
 
     const url = new URL(window.location.href);
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
@@ -155,6 +299,20 @@ jQuery(function($){
     if (isFiniteNumber(queryPer) && queryPer > 0){ setPerPage($root, queryPer); }
     const queryPage = parseInt(url.searchParams.get('page'), 10);
     if (isFiniteNumber(queryPage) && queryPage > 0){ setCurrentPage($root, queryPage); }
+    const $priceRange = $root.find('.np-price-range');
+    if ($priceRange.length){
+      const baseMin = parseFloat($priceRange.data('baseMin'));
+      const baseMax = parseFloat($priceRange.data('baseMax'));
+      const queryMin = clampPriceRange(baseMin, baseMax, parseFloat(url.searchParams.get('price_min')));
+      const queryMax = clampPriceRange(baseMin, baseMax, parseFloat(url.searchParams.get('price_max')));
+      if (isFiniteNumber(queryMin)){
+        $priceRange.find('.np-price-range__input--min').val(queryMin);
+      }
+      if (isFiniteNumber(queryMax)){
+        $priceRange.find('.np-price-range__input--max').val(queryMax);
+      }
+      adjustPriceRange($priceRange);
+    }
 
     load($root, getCurrentPage($root), {scroll:false});
   });

@@ -57,9 +57,16 @@ class NorPumps_App {
     public function front_assets(){
         wp_enqueue_style('norpumps-store', NORPUMPS_URL.'assets/css/store.css',[],NORPUMPS_VERSION);
         wp_enqueue_script('norpumps-store', NORPUMPS_URL.'assets/js/store.js',['jquery'],NORPUMPS_VERSION,true);
+        $currency_symbol = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '$';
+        $currency_code = function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : 'USD';
+        $price_decimals = function_exists('wc_get_price_decimals') ? wc_get_price_decimals() : 0;
         wp_localize_script('norpumps-store','NorpumpsStore',[
             'ajax_url'=>admin_url('admin-ajax.php'),
             'nonce'=>wp_create_nonce('norpumps_store'),
+            'currency_symbol'=>$currency_symbol,
+            'currency'=>$currency_code,
+            'price_decimals'=>$price_decimals,
+            'locale'=>get_locale(),
         ]);
     }
     public function admin_assets($hook){

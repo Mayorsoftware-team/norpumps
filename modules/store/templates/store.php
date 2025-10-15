@@ -7,6 +7,7 @@ $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
 $search_value = isset($search_query) ? $search_query : '';
 $orderby_value = isset($orderby_query) ? $orderby_query : 'menu_order title';
 if (!isset($filters_arr)) $filters_arr = [];
+$price_filter_enabled = in_array('price', $filters_arr, true);
 ?>
 <div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>">
   <div class="norpumps-store__header">
@@ -25,6 +26,25 @@ if (!isset($filters_arr)) $filters_arr = [];
 
   <div class="norpumps-store__layout">
     <aside class="norpumps-filters">
+      <?php if ($price_filter_enabled): ?>
+        <div class="np-filter np-filter--price" data-filter="price">
+          <div class="np-filter__head"><?php esc_html_e('Rango de precio','norpumps'); ?></div>
+          <div class="np-filter__body">
+            <div class="np-price-range" data-base-min="<?php echo esc_attr($price_min_attr); ?>" data-base-max="<?php echo esc_attr($price_max_attr); ?>" data-current-min="<?php echo esc_attr($price_current_min); ?>" data-current-max="<?php echo esc_attr($price_current_max); ?>" data-step="<?php echo esc_attr($price_step); ?>">
+              <div class="np-price-range__slider">
+                <div class="np-price-range__track"></div>
+                <input type="range" class="np-price-range__input np-price-range__input--min" min="<?php echo esc_attr($price_min_attr); ?>" max="<?php echo esc_attr($price_max_attr); ?>" step="<?php echo esc_attr($price_step); ?>" value="<?php echo esc_attr($price_current_min); ?>" aria-label="<?php esc_attr_e('Precio mínimo','norpumps'); ?>">
+                <input type="range" class="np-price-range__input np-price-range__input--max" min="<?php echo esc_attr($price_min_attr); ?>" max="<?php echo esc_attr($price_max_attr); ?>" step="<?php echo esc_attr($price_step); ?>" value="<?php echo esc_attr($price_current_max); ?>" aria-label="<?php esc_attr_e('Precio máximo','norpumps'); ?>">
+              </div>
+              <div class="np-price-range__values">
+                <span class="np-price-value np-price-value--min"><?php echo esc_html($price_display_min); ?></span>
+                <span class="np-price-value np-price-value--max"><?php echo esc_html($price_display_max); ?></span>
+              </div>
+              <p class="np-price-range__hint"><?php esc_html_e('Arrastra los puntos o toca para ajustar el rango.','norpumps'); ?></p>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
       <?php if (in_array('cat',$filters_arr) && !empty($groups)): ?>
         <?php foreach ($groups as $g):
           $parent = get_term_by('slug', $g['slug'], 'product_cat');

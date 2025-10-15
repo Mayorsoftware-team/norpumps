@@ -31,7 +31,13 @@ class NorPumps_Modules_Store {
                 </div>
                 <div class="np-row">
                     <label><?php esc_html_e('Filtros activos','norpumps'); ?></label>
+                    <label class="np-chip"><input type="checkbox" id="f_price" checked> <?php esc_html_e('Rango de precio','norpumps');?></label>
                     <label class="np-chip"><input type="checkbox" id="f_cat" checked> <?php esc_html_e('Secciones de categorías','norpumps');?></label>
+                </div>
+                <div class="np-row" id="np_price_row">
+                    <label><?php esc_html_e('Rango de precios (mín. / máx.)','norpumps'); ?></label>
+                    <input type="number" id="np_price_min" value="0" min="0" step="1">
+                    <input type="number" id="np_price_max" value="10000" min="0" step="1">
                 </div>
                 <div class="np-row">
                     <label><?php esc_html_e('Secciones (elige categoría padre)','norpumps'); ?></label>
@@ -46,6 +52,7 @@ class NorPumps_Modules_Store {
         <script>
         jQuery(function($){
             const $groups = $('#np_groups'); let idx=0;
+            const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
             function addGroup(label='', slug=''){
                 const i = idx++;
                 const html = `<div class="np-group" data-i="${i}">
@@ -60,17 +67,36 @@ class NorPumps_Modules_Store {
                 const cols = $('#np_cols').val()||4;
                 const perPage = $('#np_per_page').val()||12;
                 const page = $('#np_page').val()||1;
-                const filters = []; if ($('#f_cat').is(':checked')) filters.push('cat');
+                const filters = [];
+                if ($('#f_price').is(':checked')) filters.push('price');
+                if ($('#f_cat').is(':checked')) filters.push('cat');
+                let priceMin = parseFloat($('#np_price_min').val());
+                let priceMax = parseFloat($('#np_price_max').val());
+                if (!isFiniteNumber(priceMin) || priceMin < 0){ priceMin = 0; $('#np_price_min').val(priceMin); }
+                if (!isFiniteNumber(priceMax) || priceMax < 0){ priceMax = priceMin; $('#np_price_max').val(priceMax); }
+                if (priceMax < priceMin){ priceMax = priceMin; $('#np_price_max').val(priceMax); }
                 const groups = [];
                 $groups.find('.np-group').each(function(){
                     const label = $(this).find('.np-group-label').val().replace(/"/g,'\\"');
                     const slug = $(this).find('.np-group-slug').val();
                     if (slug) groups.push(label+':'+slug);
                 });
-                $('#np_shortcode').text('[norpumps_store columns="'+cols+'" per_page="'+perPage+'" page="'+page+'" filters="'+filters.join(',')+'" groups="'+groups.join('|')+'" show_all="yes"]');
+                const parts = [
+                    'columns="'+cols+'"',
+                    'per_page="'+perPage+'"',
+                    'page="'+page+'"',
+                    'filters="'+filters.join(',')+'"',
+                    'groups="'+groups.join('|')+'"',
+                ];
+                if ($('#f_price').is(':checked')){
+                    parts.push('price_min="'+priceMin+'"');
+                    parts.push('price_max="'+priceMax+'"');
+                }
+                parts.push('show_all="yes"');
+                $('#np_shortcode').text('[norpumps_store '+parts.join(' ')+']');
             }
             $('#np_add_group').on('click', function(){ addGroup(); });
-            $(document).on('input change', '#np_cols, #np_per_page, #np_page, #f_cat, .np-group input', updateShortcode);
+            $(document).on('input change', '#np_cols, #np_per_page, #np_page, #f_cat, #f_price, #np_price_min, #np_price_max, .np-group input', updateShortcode);
             $(document).on('click', '.np-del', function(){ $(this).closest('.np-group').remove(); updateShortcode(); });
             $(document).on('click', '.np-search-cat', function(){
                 const $row = $(this).closest('.np-group'); const q = $row.find('.np-group-slug').val();
@@ -86,6 +112,13 @@ class NorPumps_Modules_Store {
                 const slug=$(this).data('slug'); $(this).closest('.np-group').find('.np-group-slug').val(slug);
                 $('.np-autocomplete').remove(); updateShortcode();
             });
+            function togglePriceInputs(){
+                const enabled = $('#f_price').is(':checked');
+                $('#np_price_row').toggleClass('is-disabled', !enabled);
+                $('#np_price_min, #np_price_max').prop('disabled', !enabled);
+            }
+            $('#f_price').on('change', togglePriceInputs);
+            togglePriceInputs();
             addGroup('MARCAS','marcas');
         });
         </script><?php
@@ -104,6 +137,8 @@ class NorPumps_Modules_Store {
             'groups'=>'', // "Label:slugPadre|Label2:slugPadre2"
             'show_all'=>'yes',
             'per_page'=>12,'order'=>'menu_order title','page'=>1,
+            'price_min'=>0,
+            'price_max'=>10000,
         ], $atts, 'norpumps_store');
         $columns = max(2, min(6, intval($atts['columns'])));
         $per_page = max(1, min(60, intval($atts['per_page'])));
@@ -112,6 +147,23 @@ class NorPumps_Modules_Store {
             $parts = array_map('trim', explode(':',$chunk,2));
             if (count($parts)==2){ $label = sanitize_text_field($parts[0]); $slug = sanitize_title($parts[1]); if ($slug) $groups[]=['label'=>$label?:$slug,'slug'=>$slug]; }
         }
+        $price_min_attr = max(0, floatval($atts['price_min']));
+        $price_max_attr = max($price_min_attr, floatval($atts['price_max']));
+        $price_decimals = function_exists('wc_get_price_decimals') ? wc_get_price_decimals() : 0;
+        $price_step = $price_decimals > 0 ? pow(10, -$price_decimals) : 1;
+        $price_currency_symbol = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '$';
+
+        $price_query_min_raw = sanitize_text_field((string) norpumps_array_get($_GET, 'price_min', ''));
+        $price_query_max_raw = sanitize_text_field((string) norpumps_array_get($_GET, 'price_max', ''));
+        $price_current_min = $price_query_min_raw !== '' ? max($price_min_attr, min($price_max_attr, floatval($price_query_min_raw))) : $price_min_attr;
+        $price_current_max = $price_query_max_raw !== '' ? max($price_min_attr, min($price_max_attr, floatval($price_query_max_raw))) : $price_max_attr;
+        if ($price_current_min > $price_current_max){
+            $price_current_min = $price_min_attr;
+            $price_current_max = $price_max_attr;
+        }
+        $price_display_min = function_exists('wc_price') ? wp_strip_all_tags(wc_price($price_current_min)) : $price_currency_symbol.' '.number_format_i18n($price_current_min, $price_decimals);
+        $price_display_max = function_exists('wc_price') ? wp_strip_all_tags(wc_price($price_current_max)) : $price_currency_symbol.' '.number_format_i18n($price_current_max, $price_decimals);
+
         $default_page = max(1, intval($atts['page']));
         $requested_per_page = max(1, min(60, intval(isset($_GET['per_page']) ? $_GET['per_page'] : $per_page)));
         $requested_page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : $default_page));
@@ -168,6 +220,23 @@ class NorPumps_Modules_Store {
                 if ($slugs){
                     $tax_query[] = ['taxonomy'=>'product_cat','field'=>'slug','terms'=>$slugs,'include_children'=>true,'operator'=>'IN'];
                 }
+            }
+        }
+        $min_price_raw = norpumps_array_get($_REQUEST,'price_min','');
+        $max_price_raw = norpumps_array_get($_REQUEST,'price_max','');
+        if ($min_price_raw !== ''){
+            $min_price = floatval(sanitize_text_field((string) $min_price_raw));
+            if ($min_price >= 0){
+                $args['min_price'] = $min_price;
+            }
+        }
+        if ($max_price_raw !== ''){
+            $max_price = floatval(sanitize_text_field((string) $max_price_raw));
+            if ($max_price >= 0){
+                if (isset($args['min_price']) && $max_price < $args['min_price']){
+                    $max_price = $args['min_price'];
+                }
+                $args['max_price'] = $max_price;
             }
         }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
