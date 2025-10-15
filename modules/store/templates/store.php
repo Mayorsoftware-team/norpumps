@@ -5,11 +5,11 @@ $price_max = isset($atts['price_max']) ? floatval($atts['price_max']) : 10000;
 $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
 if (!isset($filters_arr)) $filters_arr = [];
 ?>
-<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>">
+<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr(intval($atts['per_page'])); ?>">
   <div class="norpumps-store__header">
     <div class="norpumps-store__orderby">
       <label><?php esc_html_e('Ordenar…','norpumps'); ?></label>
-      <select class="np-orderby">
+      <select class="np-orderby" data-param="orderby">
         <option value="menu_order title"><?php esc_html_e('Predeterminado','norpumps'); ?></option>
         <option value="price"><?php esc_html_e('Precio: bajo a alto','norpumps'); ?></option>
         <option value="price-desc"><?php esc_html_e('Precio: alto a bajo','norpumps'); ?></option>
@@ -18,7 +18,7 @@ if (!isset($filters_arr)) $filters_arr = [];
       </select>
     </div>
     <div class="norpumps-store__search">
-      <input type="search" class="np-search" placeholder="<?php esc_attr_e('Buscar productos…','norpumps'); ?>">
+      <input type="search" class="np-search" data-param="s" placeholder="<?php esc_attr_e('Buscar productos…','norpumps'); ?>">
     </div>
   </div>
 
@@ -30,8 +30,8 @@ if (!isset($filters_arr)) $filters_arr = [];
         <div class="np-filter__body">
           <div class="np-price">
             <div class="np-price__slider" data-min="<?php echo esc_attr($price_min); ?>" data-max="<?php echo esc_attr($price_max); ?>">
-              <input type="range" class="np-range-min" min="<?php echo esc_attr($price_min); ?>" max="<?php echo esc_attr($price_max); ?>" value="<?php echo esc_attr($price_min); ?>">
-              <input type="range" class="np-range-max" min="<?php echo esc_attr($price_min); ?>" max="<?php echo esc_attr($price_max); ?>" value="<?php echo esc_attr($price_max); ?>">
+              <input type="range" class="np-range-min" data-param="min_price" min="<?php echo esc_attr($price_min); ?>" max="<?php echo esc_attr($price_max); ?>" value="<?php echo esc_attr($price_min); ?>">
+              <input type="range" class="np-range-max" data-param="max_price" min="<?php echo esc_attr($price_min); ?>" max="<?php echo esc_attr($price_max); ?>" value="<?php echo esc_attr($price_max); ?>">
             </div>
             <div class="np-price__labels">
               <span class="np-price-min"><?php echo esc_html($price_min); ?></span>
@@ -53,7 +53,7 @@ if (!isset($filters_arr)) $filters_arr = [];
               <?php if ($show_all): ?>
                 <label class="np-all"><input type="checkbox" class="np-all-toggle" checked> <?php esc_html_e('Todos','norpumps'); ?></label>
               <?php endif; ?>
-              <div class="np-checklist" data-tax="product_cat" data-group="<?php echo esc_attr($g['slug']); ?>">
+              <div class="np-checklist" data-tax="product_cat" data-group="<?php echo esc_attr($g['slug']); ?>" data-param="<?php echo esc_attr('cat_'.$g['slug']); ?>">
                 <?php
                 // IMPORTANT: avoid function redeclare fatals in REST/editor
                 if (!function_exists('np_render_children_only')){
