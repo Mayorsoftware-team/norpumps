@@ -1,5 +1,5 @@
 <?php if (!defined('ABSPATH')) { exit; } global $product; ?>
-<article class="np-card">
+<article class="np-card product">
   <a class="np-card__image" href="<?php echo esc_url(get_permalink($product->get_id())); ?>">
     <?php echo $product->get_image('woocommerce_thumbnail'); ?>
   </a>
