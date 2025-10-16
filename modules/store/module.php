@@ -162,12 +162,27 @@ class NorPumps_Modules_Store {
         wp_enqueue_script('wc-cart-fragments');
         wp_enqueue_style('woocommerce-general');
         ob_start();
-        $filters_arr = array_filter(array_map('trim', explode(',', $atts['filters'])));
+        $filters_arr = [];
+        foreach (array_filter(array_map('trim', explode(',', $atts['filters']))) as $raw_filter){
+            $normalized_filter = strtolower(sanitize_key($raw_filter));
+            if ($normalized_filter !== '' && !in_array($normalized_filter, $filters_arr, true)){
+                $filters_arr[] = $normalized_filter;
+            }
+        }
         $meta_filters_all = $this->parse_meta_filters_from_atts($atts);
         $meta_filters = [];
         foreach ($filters_arr as $filter_id){
             if (isset($meta_filters_all[$filter_id])){
                 $meta_filters[$filter_id] = $meta_filters_all[$filter_id];
+            }
+        }
+        foreach ($meta_filters_all as $meta_id=>$meta_config){
+            if (isset($meta_filters[$meta_id])){
+                continue;
+            }
+            $meta_filters[$meta_id] = $meta_config;
+            if (!in_array($meta_id, $filters_arr, true)){
+                $filters_arr[] = $meta_id;
             }
         }
         include __DIR__.'/templates/store.php';
