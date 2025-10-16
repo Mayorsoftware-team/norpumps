@@ -8,11 +8,6 @@ jQuery(function($){
   const SCROLL_OFFSET = 120;
   const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
 
-  function clamp(value, min, max){
-    value = parseFloat(value || 0);
-    if (!isFiniteNumber(value)) value = min;
-    return Math.min(Math.max(value, min), max);
-  }
   function getDefaultPerPage($root){
     const val = parseInt($root.data('defaultPerPage'), 10);
     return isFiniteNumber(val) && val > 0 ? val : 12;
@@ -43,29 +38,6 @@ jQuery(function($){
     setCurrentPage($root, fallback);
     return fallback;
   }
-  function getDefaultMinPrice($root){
-    const val = parseFloat($root.data('defaultMinPrice'));
-    return isFiniteNumber(val) ? val : null;
-  }
-  function getDefaultMaxPrice($root){
-    const val = parseFloat($root.data('defaultMaxPrice'));
-    return isFiniteNumber(val) ? val : null;
-  }
-  function syncPriceUI($root){
-    const $wrap = $root.find('.np-price__slider');
-    if (!$wrap.length) return {};
-    const sliderMin = parseFloat($wrap.data('min'));
-    const sliderMax = parseFloat($wrap.data('max'));
-    const $min = $wrap.find('.np-range-min');
-    const $max = $wrap.find('.np-range-max');
-    let vmin = clamp($min.val(), sliderMin, sliderMax);
-    let vmax = clamp($max.val(), sliderMin, sliderMax);
-    if (vmin > vmax){ const tmp = vmin; vmin = vmax; vmax = tmp; }
-    $min.val(vmin); $max.val(vmax);
-    $root.find('.np-price-min').text(vmin);
-    $root.find('.np-price-max').text(vmax);
-    return {min:vmin, max:vmax};
-  }
   function buildQuery($root){
     const data = { action:'norpumps_store_query', nonce:NorpumpsStore.nonce };
     data.per_page = getPerPage($root);
@@ -76,9 +48,6 @@ jQuery(function($){
     if (orderDir){ data.order = orderDir; }
     const search = $root.find('.np-search').val();
     if (search){ data.s = search; }
-    const price = syncPriceUI($root);
-    if (price.min != null) data.min_price = price.min;
-    if (price.max != null) data.max_price = price.max;
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
       const group = $(this).data('group');
       const vals = $(this).find('input:checked').map(function(){ return this.value; }).get();
@@ -93,15 +62,11 @@ jQuery(function($){
     const params = new URLSearchParams();
     const defaultPer = getDefaultPerPage($root);
     const defaultPage = getDefaultPage($root);
-    const defaultMin = getDefaultMinPrice($root);
-    const defaultMax = getDefaultMaxPrice($root);
     Object.keys(obj).forEach(key => {
       if (['action','nonce'].includes(key)) return;
       if (obj[key] === '' || obj[key] == null) return;
       if (key === 'page' && parseInt(obj[key], 10) === defaultPage) return;
       if (key === 'per_page' && parseInt(obj[key], 10) === defaultPer) return;
-      if (key === 'min_price' && defaultMin !== null && parseFloat(obj[key]) === defaultMin) return;
-      if (key === 'max_price' && defaultMax !== null && parseFloat(obj[key]) === defaultMax) return;
       params.set(key, obj[key]);
     });
     return params.toString();
@@ -156,8 +121,6 @@ jQuery(function($){
     setCurrentPage($root, getCurrentPage($root));
 
     $root.on('change', '.np-orderby select', function(){ resetToFirstPage($root); load($root, 1, {scroll:true}); });
-    $root.on('input change', '.np-price__slider input[type=range]', function(){ syncPriceUI($root); })
-         .on('change', '.np-price__slider input[type=range]', function(){ resetToFirstPage($root); load($root, 1, {scroll:true}); });
     $root.on('keyup', '.np-search', function(e){ if (e.keyCode === 13){ resetToFirstPage($root); load($root, 1, {scroll:true}); } });
     $root.on('click', '.js-np-page', function(e){
       e.preventDefault();
@@ -170,11 +133,6 @@ jQuery(function($){
     bindAllToggle($root);
 
     const url = new URL(window.location.href);
-    const pmin = url.searchParams.get('min_price');
-    const pmax = url.searchParams.get('max_price');
-    if (pmin != null){ $root.find('.np-range-min').val(pmin); }
-    if (pmax != null){ $root.find('.np-range-max').val(pmax); }
-    syncPriceUI($root);
 
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
       const group = $(this).data('group');
