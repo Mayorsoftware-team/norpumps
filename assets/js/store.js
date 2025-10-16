@@ -38,6 +38,24 @@ jQuery(function($){
     setCurrentPage($root, fallback);
     return fallback;
   }
+  function getPriceDefaults($root){
+    const $range = $root.find('.np-price-range');
+    if (!$range.length) return null;
+    const min = parseFloat($range.data('min'));
+    const max = parseFloat($range.data('max'));
+    if (!isFiniteNumber(min) || !isFiniteNumber(max)) return null;
+    return { min, max };
+  }
+
+  function getPriceState($root){
+    const $range = $root.find('.np-price-range');
+    if (!$range.length) return null;
+    const min = parseFloat($range.data('currentMin'));
+    const max = parseFloat($range.data('currentMax'));
+    if (!isFiniteNumber(min) || !isFiniteNumber(max)) return null;
+    return { min, max };
+  }
+
   function buildQuery($root){
     const data = { action:'norpumps_store_query', nonce:NorpumpsStore.nonce };
     data.per_page = getPerPage($root);
@@ -56,17 +74,27 @@ jQuery(function($){
         data['cat_'+group] = vals.join(',');
       }
     });
+    const price = getPriceState($root);
+    if (price){
+      data.price_min = price.min;
+      data.price_max = price.max;
+    }
     return data;
   }
   function toQuery($root, obj){
     const params = new URLSearchParams();
     const defaultPer = getDefaultPerPage($root);
     const defaultPage = getDefaultPage($root);
+    const priceDefaults = getPriceDefaults($root);
     Object.keys(obj).forEach(key => {
       if (['action','nonce'].includes(key)) return;
       if (obj[key] === '' || obj[key] == null) return;
       if (key === 'page' && parseInt(obj[key], 10) === defaultPage) return;
       if (key === 'per_page' && parseInt(obj[key], 10) === defaultPer) return;
+      if (priceDefaults){
+        if (key === 'price_min' && parseFloat(obj[key]) === priceDefaults.min) return;
+        if (key === 'price_max' && parseFloat(obj[key]) === priceDefaults.max) return;
+      }
       params.set(key, obj[key]);
     });
     return params.toString();
@@ -115,6 +143,128 @@ jQuery(function($){
     });
   }
 
+  function bindPriceFilter($root){
+    const $range = $root.find('.np-price-range');
+    if (!$range.length) return;
+
+    const minLimit = parseFloat($range.data('min'));
+    const maxLimit = parseFloat($range.data('max'));
+    const step = parseFloat($range.data('step')) || 1;
+    const decimals = parseInt($range.data('decimals'), 10);
+    const currency = ($range.data('currency') || '').toString();
+    const $minSlider = $range.find('.js-np-price-min');
+    const $maxSlider = $range.find('.js-np-price-max');
+    const $minInput = $range.find('.js-np-price-min-input');
+    const $maxInput = $range.find('.js-np-price-max-input');
+    const $minLabel = $range.find('.js-np-price-min-label');
+    const $maxLabel = $range.find('.js-np-price-max-label');
+    const $progress = $range.find('.np-price-range__progress');
+    const digits = isFiniteNumber(decimals) && decimals > 0 ? decimals : 0;
+    const formatter = (window.Intl && typeof window.Intl.NumberFormat === 'function')
+      ? new Intl.NumberFormat('es-CL', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+      : null;
+
+    $minSlider.attr({ min: minLimit, max: maxLimit, step: step });
+    $maxSlider.attr({ min: minLimit, max: maxLimit, step: step });
+    $minInput.attr({ min: minLimit, max: maxLimit, step: step });
+    $maxInput.attr({ min: minLimit, max: maxLimit, step: step });
+
+    function clamp(value){
+      const num = parseFloat(value);
+      if (!isFiniteNumber(num)) return minLimit;
+      const stepped = Math.round(num / step) * step;
+      return Math.min(maxLimit, Math.max(minLimit, stepped));
+    }
+    function formatPrice(value){
+      const num = parseFloat(value);
+      if (!isFiniteNumber(num)) return currency + '0';
+      if (formatter){
+        return currency + formatter.format(num);
+      }
+      return currency + num.toFixed(digits);
+    }
+    function setData(min, max){
+      $range.data('currentMin', min);
+      $range.data('currentMax', max);
+    }
+    function getData(){
+      return {
+        min: parseFloat($range.data('currentMin')),
+        max: parseFloat($range.data('currentMax'))
+      };
+    }
+    function updateProgress(min, max){
+      const total = maxLimit - minLimit;
+      if (total <= 0) return;
+      const left = ((min - minLimit) / total) * 100;
+      const right = 100 - ((max - minLimit) / total) * 100;
+      $progress.css({ left: left + '%', right: right + '%' });
+    }
+    function render(min, max){
+      $minSlider.val(min);
+      $maxSlider.val(max);
+      $minInput.val(min);
+      $maxInput.val(max);
+      $minLabel.text(formatPrice(min));
+      $maxLabel.text(formatPrice(max));
+      updateProgress(min, max);
+    }
+    const precisionFactor = Math.pow(10, digits);
+
+    function normalize(value){
+      if (!isFiniteNumber(value)) return value;
+      if (!isFiniteNumber(precisionFactor) || precisionFactor <= 0) return value;
+      return Math.round(value * precisionFactor) / precisionFactor;
+    }
+
+    function syncValues(newMin, newMax, origin){
+      let min = clamp(newMin);
+      let max = clamp(newMax);
+      if (min > max){
+        if (origin === 'min'){
+          max = min;
+        } else {
+          min = max;
+        }
+      }
+      min = normalize(min);
+      max = normalize(max);
+      setData(min, max);
+      render(min, max);
+      return { min, max };
+    }
+    let applied = syncValues($range.data('currentMin'), $range.data('currentMax'));
+    if (!isFiniteNumber(applied.min) || !isFiniteNumber(applied.max)){
+      applied = syncValues(minLimit, maxLimit);
+    }
+
+    function maybeApply(){
+      const current = getData();
+      if (!isFiniteNumber(current.min) || !isFiniteNumber(current.max)) return;
+      const epsilon = Math.max(Math.abs(step), 0.01) / 1000;
+      if (Math.abs(current.min - applied.min) < epsilon && Math.abs(current.max - applied.max) < epsilon){
+        return;
+      }
+      applied = { min: current.min, max: current.max };
+      resetToFirstPage($root);
+      load($root, 1, {scroll:true});
+    }
+
+    $minSlider.on('input', function(){ syncValues(this.value, getData().max, 'min'); });
+    $maxSlider.on('input', function(){ syncValues(getData().min, this.value, 'max'); });
+    $minSlider.on('change', maybeApply);
+    $maxSlider.on('change', maybeApply);
+
+    $minInput.on('input', function(){ syncValues(this.value, getData().max, 'min'); });
+    $maxInput.on('input', function(){ syncValues(getData().min, this.value, 'max'); });
+    $minInput.on('change blur', maybeApply);
+    $maxInput.on('change blur', maybeApply);
+    $minInput.on('keyup', function(e){ if (e.key === 'Enter'){ maybeApply(); } });
+    $maxInput.on('keyup', function(e){ if (e.key === 'Enter'){ maybeApply(); } });
+
+    updateProgress(applied.min, applied.max);
+  }
+
   $('.norpumps-store').each(function(){
     const $root = $(this);
     setPerPage($root, getPerPage($root));
@@ -131,6 +281,7 @@ jQuery(function($){
     });
 
     bindAllToggle($root);
+    bindPriceFilter($root);
 
     const url = new URL(window.location.href);
 
