@@ -1,15 +1,15 @@
 <?php
 /**
  * Plugin Name: NorPumps Suite
- * Description: v1.2.1 — Tienda solo con categorías. Padre = título; hijas = checkboxes. AJAX + URL amigables. Slider precio. Admin con autocompletar. (Fix JSON/func redeclare) + módulo techsheet
- * Version: 1.2.1
+ * Description: v1.2.2 — Tienda solo con categorías. Padre = título; hijas = checkboxes. AJAX + URL amigables. Admin con autocompletar. (Fix JSON/func redeclare) + módulo techsheet
+ * Version: 1.2.2
  * Author: Alfonso (fiverr)
  * Requires at least: 6.0
  * Requires PHP: 7.4
  * Text Domain: norpumps
  */
 if (!defined('ABSPATH')) { exit; }
-define('NORPUMPS_VERSION', '1.2.1');
+define('NORPUMPS_VERSION', '1.2.2');
 define('NORPUMPS_PATH', plugin_dir_path(__FILE__));
 define('NORPUMPS_URL', plugin_dir_url(__FILE__));
 spl_autoload_register(function($class){
