@@ -4,7 +4,6 @@ $current_per_page = isset($requested_per_page) ? intval($requested_per_page) : (
 $current_page = isset($requested_page) ? intval($requested_page) : 1;
 $default_page_attr = isset($default_page) ? intval($default_page) : 1;
 $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
-$search_value = isset($search_query) ? $search_query : '';
 $orderby_value = isset($orderby_query) ? $orderby_query : 'menu_order title';
 if (!isset($filters_arr)) $filters_arr = [];
 $current_price_min = isset($requested_price_min) ? floatval($requested_price_min) : (isset($default_price_min) ? floatval($default_price_min) : 0);
@@ -12,26 +11,27 @@ $current_price_max = isset($requested_price_max) ? floatval($requested_price_max
 $default_price_min_attr = isset($default_price_min) ? floatval($default_price_min) : $current_price_min;
 $default_price_max_attr = isset($default_price_max) ? floatval($default_price_max) : $current_price_max;
 $has_price_filter = in_array('price', $filters_arr, true);
+$has_order_filter = in_array('order', $filters_arr, true);
+$order_field_id = 'np-orderby-'.uniqid();
 ?>
 <div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-price-min="<?php echo esc_attr(number_format($current_price_min, 2, '.', '')); ?>" data-price-max="<?php echo esc_attr(number_format($current_price_max, 2, '.', '')); ?>" data-default-price-min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" data-default-price-max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>">
-  <div class="norpumps-store__header">
-    <div class="norpumps-store__orderby">
-      <label><?php esc_html_e('Ordenar…','norpumps'); ?></label>
-      <select class="np-orderby">
-        <option value="menu_order title" <?php selected($orderby_value, 'menu_order title'); ?>><?php esc_html_e('Predeterminado','norpumps'); ?></option>
-        <option value="price" <?php selected($orderby_value, 'price'); ?>><?php esc_html_e('Precio: bajo a alto','norpumps'); ?></option>
-        <option value="price-desc" <?php selected($orderby_value, 'price-desc'); ?>><?php esc_html_e('Precio: alto a bajo','norpumps'); ?></option>
-        <option value="date" <?php selected($orderby_value, 'date'); ?>><?php esc_html_e('Novedades','norpumps'); ?></option>
-        <option value="popularity" <?php selected($orderby_value, 'popularity'); ?>><?php esc_html_e('Popularidad','norpumps'); ?></option>
-      </select>
-    </div>
-    <div class="norpumps-store__search">
-      <input type="search" class="np-search" value="<?php echo esc_attr($search_value); ?>" placeholder="<?php esc_attr_e('Buscar productos…','norpumps'); ?>">
-    </div>
-  </div>
-
   <div class="norpumps-store__layout">
     <aside class="norpumps-filters">
+      <?php if ($has_order_filter): ?>
+        <div class="np-filter np-filter--order">
+          <div class="np-filter__head"><?php esc_html_e('Ordenar','norpumps'); ?></div>
+          <div class="np-filter__body">
+            <label class="np-filter__label" for="<?php echo esc_attr($order_field_id); ?>"><?php esc_html_e('Ordenar productos por','norpumps'); ?></label>
+            <select id="<?php echo esc_attr($order_field_id); ?>" class="np-orderby">
+              <option value="menu_order title" <?php selected($orderby_value, 'menu_order title'); ?>><?php esc_html_e('Predeterminado','norpumps'); ?></option>
+              <option value="price" <?php selected($orderby_value, 'price'); ?>><?php esc_html_e('Precio: bajo a alto','norpumps'); ?></option>
+              <option value="price-desc" <?php selected($orderby_value, 'price-desc'); ?>><?php esc_html_e('Precio: alto a bajo','norpumps'); ?></option>
+              <option value="date" <?php selected($orderby_value, 'date'); ?>><?php esc_html_e('Novedades','norpumps'); ?></option>
+              <option value="popularity" <?php selected($orderby_value, 'popularity'); ?>><?php esc_html_e('Popularidad','norpumps'); ?></option>
+            </select>
+          </div>
+        </div>
+      <?php endif; ?>
       <?php if ($has_price_filter): ?>
         <div class="np-filter np-filter--price">
           <div class="np-filter__head"><?php esc_html_e('Precio','norpumps'); ?></div>

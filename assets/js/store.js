@@ -112,16 +112,18 @@ jQuery(function($){
     setCurrentPage($root, fallback);
     return fallback;
   }
+  function findOrderSelect($root){
+    return $root.find('.np-orderby select, select.np-orderby').filter('select').first();
+  }
   function buildQuery($root){
     const data = { action:'norpumps_store_query', nonce:NorpumpsStore.nonce };
     data.per_page = getPerPage($root);
     data.page = getCurrentPage($root);
-    const orderby = $root.find('.np-orderby select').val();
+    const $orderSelect = findOrderSelect($root);
+    const orderby = $orderSelect.length ? $orderSelect.val() : '';
     if (orderby){ data.orderby = orderby; }
     const orderDir = ORDER_DIRECTIONS[orderby];
     if (orderDir){ data.order = orderDir; }
-    const search = $root.find('.np-search').val();
-    if (search){ data.s = search; }
     const range = normalizePriceRange($root);
     if (range.min !== null){ data.min_price = range.min; }
     if (range.max !== null){ data.max_price = range.max; }
@@ -221,8 +223,11 @@ jQuery(function($){
     setPerPage($root, getPerPage($root));
     setCurrentPage($root, getCurrentPage($root));
 
-    $root.on('change', '.np-orderby select', function(){ resetToFirstPage($root); load($root, 1, {scroll:true}); });
-    $root.on('keyup', '.np-search', function(e){ if (e.keyCode === 13){ resetToFirstPage($root); load($root, 1, {scroll:true}); } });
+    $root.on('change', '.np-orderby select, select.np-orderby', function(){
+      if (!$(this).is('select')) return;
+      resetToFirstPage($root);
+      load($root, 1, {scroll:true});
+    });
     $root.on('click', '.js-np-page', function(e){
       e.preventDefault();
       const $item = $(this).closest('.np-pagination__item');
@@ -250,11 +255,10 @@ jQuery(function($){
     });
 
     const queryOrder = url.searchParams.get('orderby');
-    if (queryOrder && $root.find('.np-orderby select option[value="'+queryOrder+'"]').length){
-      $root.find('.np-orderby select').val(queryOrder);
+    const $orderSelect = findOrderSelect($root);
+    if (queryOrder && $orderSelect.length && $orderSelect.find('option[value="'+queryOrder+'"]').length){
+      $orderSelect.val(queryOrder);
     }
-    const querySearch = url.searchParams.get('s');
-    if (querySearch){ $root.find('.np-search').val(querySearch); }
     const queryPer = parseInt(url.searchParams.get('per_page'), 10);
     if (isFiniteNumber(queryPer) && queryPer > 0){ setPerPage($root, queryPer); }
     const queryPage = parseInt(url.searchParams.get('page'), 10);

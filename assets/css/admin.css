@@ -1,14 +1,15 @@
 /* v1.2.1 — estilo similar al screenshot */
 .norpumps-store { --np-accent:#0f5b62; --np-bg:#fff; --np-text:#111; --np-border:#e3e9ee; }
 .norpumps-store a { color:#0a66a1; text-decoration:none; }
-.norpumps-store .norpumps-store__header{ display:flex; justify-content:space-between; align-items:center; margin:10px 0 20px; }
-.norpumps-store .np-orderby select, .norpumps-store .np-search input{ padding:8px 10px; border:1px solid #d7dee2; border-radius:6px; background:#fff; }
-.norpumps-store .np-search input{ min-width:260px; }
 .norpumps-store__layout { display:grid; grid-template-columns: 300px 1fr; gap:24px; }
 @media(max-width: 960px){ .norpumps-store__layout{ grid-template-columns:1fr; } }
 .norpumps-filters .np-filter{ margin-bottom:18px; }
 .norpumps-filters .np-filter__head{ background:var(--np-accent); color:#fff; padding:12px 14px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; border-radius:10px 10px 0 0; }
 .norpumps-filters .np-filter__body{ background:#fff; border:1px solid var(--np-border); border-top:none; padding:12px 14px; border-radius:0 0 10px 10px; }
+.np-filter__label{ font-size:12px; letter-spacing:.02em; text-transform:uppercase; color:#5c6a70; font-weight:700; }
+.np-filter--order .np-filter__body{ display:flex; flex-direction:column; gap:10px; }
+.np-filter--order select{ padding:10px 12px; border:1px solid #d7dee2; border-radius:8px; background:#fff; font-weight:600; color:var(--np-text); transition:border-color .2s ease, box-shadow .2s ease; }
+.np-filter--order select:focus{ border-color:var(--np-accent); outline:none; box-shadow:0 0 0 3px rgba(15,91,98,0.18); }
 .np-filter--price .np-filter__body{ display:flex; flex-direction:column; gap:12px; }
 .np-price-range{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
 .np-price-range__field{ flex:1 1 120px; display:flex; flex-direction:column; gap:6px; font-weight:600; color:var(--np-text); }
