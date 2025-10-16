@@ -15,9 +15,10 @@
 .np-price-range__field span{ font-size:12px; letter-spacing:.02em; text-transform:uppercase; color:#5c6a70; }
 .np-price-input{ padding:10px 12px; border:1px solid var(--np-border); border-radius:10px; background:#f9fbfc; font-weight:600; color:var(--np-text); transition:border-color .2s ease, box-shadow .2s ease; }
 .np-price-input:focus{ border-color:var(--np-accent); outline:none; box-shadow:0 0 0 3px rgba(15,91,98,0.18); }
-.np-price-apply{ align-self:flex-start; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 20px; border:none; border-radius:10px; background:#000; color:#fff; font-weight:700; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; box-shadow:0 10px 24px rgba(0,0,0,0.2); }
-.np-price-apply:hover{ transform:translateY(-1px); box-shadow:0 14px 28px rgba(17,91,106,0.25); background:#115b6a; color:#fff; }
-.np-price-apply:active{ transform:translateY(0); box-shadow:0 6px 16px rgba(17,91,106,0.2); }
+.norpumps-store .np-price-apply{ all:unset; box-sizing:border-box; align-self:flex-start; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 20px; border-radius:10px; background:#000; color:#fff; font-weight:700; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; box-shadow:0 10px 24px rgba(0,0,0,0.2); text-decoration:none; line-height:1; border:none; appearance:none; -webkit-appearance:none; font-family:inherit; }
+.norpumps-store .np-price-apply:hover{ transform:translateY(-1px); box-shadow:0 14px 28px rgba(17,91,106,0.25); background:#115b6a; color:#fff; }
+.norpumps-store .np-price-apply:active{ transform:translateY(0); box-shadow:0 6px 16px rgba(17,91,106,0.2); }
+.norpumps-store .np-price-apply:focus-visible{ outline:2px solid #115b6a; outline-offset:2px; }
 .np-filter--price .np-filter__body .np-price-range + .np-price-apply{ margin-top:4px; }
 .norpumps-filters .np-checklist label{ display:block; margin:8px 0; color:#111; }
 .norpumps-filters .np-checklist .depth-1{ padding-left:12px; opacity:.95 }
