@@ -119,6 +119,7 @@ class NorPumps_Modules_Store {
         wp_send_json_success($out);
     }
     public function shortcode_store($atts){
+        $raw_atts = is_array($atts) ? $atts : [];
         $atts = shortcode_atts([
             'columns'=>4,
             'filters'=>'cat',
@@ -128,6 +129,15 @@ class NorPumps_Modules_Store {
             'price_min'=>0,
             'price_max'=>10000,
         ], $atts, 'norpumps_store');
+        $atts_with_meta = $atts;
+        foreach ($raw_atts as $key=>$value){
+            if (!is_string($key)){
+                continue;
+            }
+            if (!array_key_exists($key, $atts_with_meta)){
+                $atts_with_meta[$key] = $value;
+            }
+        }
         $columns = max(2, min(6, intval($atts['columns'])));
         $per_page = max(1, min(60, intval($atts['per_page'])));
         $groups = [];
@@ -163,7 +173,7 @@ class NorPumps_Modules_Store {
         wp_enqueue_style('woocommerce-general');
         ob_start();
         $filters_arr = array_filter(array_map('trim', explode(',', $atts['filters'])));
-        $meta_filters_all = $this->parse_meta_filters_from_atts($atts);
+        $meta_filters_all = $this->parse_meta_filters_from_atts($atts_with_meta);
         $meta_filters = [];
         foreach ($filters_arr as $filter_id){
             if (isset($meta_filters_all[$filter_id])){
