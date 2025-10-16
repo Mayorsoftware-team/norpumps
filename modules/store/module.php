@@ -139,7 +139,7 @@ class NorPumps_Modules_Store {
         $requested_per_page = max(1, min(60, intval(isset($_GET['per_page']) ? $_GET['per_page'] : $per_page)));
         $requested_page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : $default_page));
         $search_query = sanitize_text_field(norpumps_array_get($_GET,'s',''));
-        $allowed_orderby = ['menu_order title','price','price-desc','date','popularity'];
+        $allowed_orderby = ['menu_order title','price','price-desc'];
         $orderby_query = sanitize_text_field(norpumps_array_get($_GET,'orderby','menu_order title'));
         if (!in_array($orderby_query, $allowed_orderby, true)){
             $orderby_query = 'menu_order title';
@@ -174,7 +174,7 @@ class NorPumps_Modules_Store {
             'page'=>max(1, intval(norpumps_array_get($_REQUEST,'page',1))),
             'paginate'=>true,
         ];
-        $allowed_orderby = ['menu_order title','price','price-desc','date','popularity'];
+        $allowed_orderby = ['menu_order title','price','price-desc'];
         $orderby_raw = sanitize_text_field(norpumps_array_get($_REQUEST,'orderby','menu_order title'));
         if (!in_array($orderby_raw, $allowed_orderby, true)){
             $orderby_raw = 'menu_order title';
@@ -197,6 +197,11 @@ class NorPumps_Modules_Store {
             if ($order){
                 $args['order'] = $order;
             }
+        }
+        if ($orderby === 'price' || $orderby === 'price-desc'){
+            $args['meta_key'] = '_price';
+            $args['orderby'] = 'meta_value_num';
+            $args['order'] = ($orderby === 'price-desc') ? 'DESC' : 'ASC';
         }
         $tax_query = ['relation'=>'AND'];
         foreach ($_REQUEST as $k=>$v){
