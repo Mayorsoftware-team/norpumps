@@ -13,10 +13,17 @@ $default_price_max_attr = isset($default_price_max) ? floatval($default_price_ma
 $has_price_filter = in_array('price', $filters_arr, true);
 $has_order_filter = in_array('order', $filters_arr, true);
 $order_field_id = 'np-orderby-'.uniqid();
+$filters_panel_id = 'np-filters-'.uniqid();
 ?>
 <div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-price-min="<?php echo esc_attr(number_format($current_price_min, 2, '.', '')); ?>" data-price-max="<?php echo esc_attr(number_format($current_price_max, 2, '.', '')); ?>" data-default-price-min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" data-default-price-max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>">
+  <button type="button" class="np-filters-toggle" aria-controls="<?php echo esc_attr($filters_panel_id); ?>" aria-expanded="false">
+    <span class="np-filters-toggle__icon" aria-hidden="true">✨</span>
+    <span class="np-filters-toggle__label"><?php esc_html_e('Filtros','norpumps'); ?></span>
+  </button>
+  <div class="np-filters-overlay" aria-hidden="true"></div>
   <div class="norpumps-store__layout">
-    <aside class="norpumps-filters">
+    <aside id="<?php echo esc_attr($filters_panel_id); ?>" class="norpumps-filters" aria-hidden="false" tabindex="-1">
+      <button type="button" class="np-filters-close" aria-label="<?php esc_attr_e('Cerrar filtros','norpumps'); ?>">&times;</button>
       <?php if ($has_order_filter): ?>
         <div class="np-filter np-filter--order">
           <div class="np-filter__head"><?php esc_html_e('Ordenar','norpumps'); ?></div>

@@ -4,8 +4,105 @@ jQuery(function($){
     'price-desc':'DESC'
   };
   const SCROLL_OFFSET = 120;
+  const MOBILE_BREAKPOINT = 1024;
+  const mobileQuery = window.matchMedia ? window.matchMedia('(max-width: '+MOBILE_BREAKPOINT+'px)') : null;
   const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
   const PRICE_PRECISION = 100;
+
+  function isMobileView(){
+    if (!mobileQuery){ return false; }
+    return mobileQuery.matches;
+  }
+
+  function setFiltersAria($root, hidden){
+    const $panel = $root.find('.norpumps-filters').first();
+    if (!$panel.length){ return; }
+    $panel.attr('aria-hidden', hidden ? 'true' : 'false');
+  }
+
+  function syncFiltersState($root){
+    if (isMobileView()){
+      setFiltersAria($root, !$root.hasClass('is-filters-open'));
+    } else {
+      $root.removeClass('is-filters-open');
+      setFiltersAria($root, false);
+      $root.find('.np-filters-toggle').attr('aria-expanded', 'false');
+      $root.find('.np-filters-overlay').attr('aria-hidden', 'true');
+    }
+  }
+
+  function lockScroll(){ $('body').addClass('np-lock-scroll'); }
+  function unlockScroll(){
+    if ($('.norpumps-store.is-filters-open').length === 0){
+      $('body').removeClass('np-lock-scroll');
+    }
+  }
+
+  function openFilters($root){
+    if (!$root.length || !isMobileView()){ return; }
+    $root.addClass('is-filters-open');
+    $root.find('.np-filters-toggle').attr('aria-expanded', 'true');
+    $root.find('.np-filters-overlay').attr('aria-hidden', 'false');
+    setFiltersAria($root, false);
+    lockScroll();
+    const $panel = $root.find('.norpumps-filters').first();
+    if ($panel.length){
+      setTimeout(function(){ $panel.trigger('focus'); }, 0);
+    }
+  }
+
+  function closeFilters($root, options){
+    const opts = $.extend({skipFocus:false, force:false}, options);
+    if (!$root.length){ return; }
+    if (!$root.hasClass('is-filters-open') && !opts.force){
+      syncFiltersState($root);
+      return;
+    }
+    $root.removeClass('is-filters-open');
+    $root.find('.np-filters-toggle').attr('aria-expanded', 'false');
+    $root.find('.np-filters-overlay').attr('aria-hidden', 'true');
+    setFiltersAria($root, isMobileView());
+    unlockScroll();
+    if (!opts.skipFocus){
+      setTimeout(function(){ $root.find('.np-filters-toggle').trigger('focus'); }, 0);
+    }
+  }
+
+  function bindFiltersToggle($root){
+    $root.on('click', '.np-filters-toggle', function(e){
+      e.preventDefault();
+      if ($root.hasClass('is-filters-open')){
+        closeFilters($root, {skipFocus:true});
+      } else {
+        openFilters($root);
+      }
+    });
+    $root.on('click', '.np-filters-close', function(e){
+      e.preventDefault();
+      closeFilters($root);
+    });
+    $root.on('click', '.np-filters-overlay', function(e){
+      e.preventDefault();
+      closeFilters($root);
+    });
+    if (mobileQuery){
+      const handler = function(){
+        syncFiltersState($root);
+        if (!isMobileView()){
+          unlockScroll();
+        }
+      };
+      if (typeof mobileQuery.addEventListener === 'function'){
+        mobileQuery.addEventListener('change', handler);
+      } else if (typeof mobileQuery.addListener === 'function'){
+        mobileQuery.addListener(handler);
+      }
+      handler();
+    } else {
+      syncFiltersState($root);
+      unlockScroll();
+    }
+  }
 
   function formatPriceValue(value){
     const numeric = parseFloat(value);
@@ -169,6 +266,9 @@ jQuery(function($){
       const finalPayload = buildQuery($root);
       const qs = toQuery($root, finalPayload);
       history.replaceState(null, '', qs ? (location.pathname + '?' + qs) : location.pathname);
+      if (isMobileView()){
+        closeFilters($root, {skipFocus:true, force:true});
+      }
       if (opts.scroll){ scrollToStore($root); }
     }).always(function(){
       $root.removeClass('is-loading');
@@ -221,6 +321,8 @@ jQuery(function($){
     setPerPage($root, getPerPage($root));
     setCurrentPage($root, getCurrentPage($root));
 
+    bindFiltersToggle($root);
+
     $root.on('change', '.np-orderby select, select.np-orderby', function(){
       if (!$(this).is('select')) return;
       resetToFirstPage($root);
@@ -272,5 +374,13 @@ jQuery(function($){
     normalizePriceRange($root);
 
     load($root, getCurrentPage($root), {scroll:false});
+  });
+
+  $(document).on('keyup.npFilters', function(e){
+    if (e.key === 'Escape' || e.keyCode === 27){
+      $('.norpumps-store.is-filters-open').each(function(){
+        closeFilters($(this));
+      });
+    }
   });
 });
