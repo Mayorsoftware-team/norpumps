@@ -44,42 +44,74 @@ if ($has_any_filter) {
       <?php if ($has_any_filter): ?>
         <button type="button" class="np-filters-close" aria-label="<?php esc_attr_e('Cerrar filtros','norpumps'); ?>" hidden>✕</button>
       <?php endif; ?>
-      <?php if ($has_order_filter): ?>
-        <div class="np-filter np-filter--order">
-          <div class="np-filter__head"><?php esc_html_e('Ordenar','norpumps'); ?></div>
-          <div class="np-filter__body">
-            <label class="np-filter__label" for="<?php echo esc_attr($order_field_id); ?>"><?php esc_html_e('Ordenar productos por','norpumps'); ?></label>
-            <select id="<?php echo esc_attr($order_field_id); ?>" class="np-orderby">
-              <option value="menu_order title" <?php selected($orderby_value, 'menu_order title'); ?>><?php esc_html_e('Predeterminado','norpumps'); ?></option>
-              <option value="price" <?php selected($orderby_value, 'price'); ?>><?php esc_html_e('Precio: bajo a alto','norpumps'); ?></option>
-              <option value="price-desc" <?php selected($orderby_value, 'price-desc'); ?>><?php esc_html_e('Precio: alto a bajo','norpumps'); ?></option>
-            </select>
-          </div>
-        </div>
-      <?php endif; ?>
-      <?php if ($has_price_filter): ?>
-        <div class="np-filter np-filter--price">
-          <div class="np-filter__head"><?php esc_html_e('Precio','norpumps'); ?></div>
-          <div class="np-filter__body">
-            <div class="np-price-range" data-default-min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" data-default-max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>">
-              <label class="np-price-range__field">
-                <span><?php esc_html_e('Mínimo','norpumps'); ?></span>
-                <input type="number" step="0.01" class="np-price-input np-price-min" min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>" value="<?php echo esc_attr(number_format($current_price_min, 2, '.', '')); ?>">
-              </label>
-              <label class="np-price-range__field">
-                <span><?php esc_html_e('Máximo','norpumps'); ?></span>
-                <input type="number" step="0.01" class="np-price-input np-price-max" min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>" value="<?php echo esc_attr(number_format($current_price_max, 2, '.', '')); ?>">
-              </label>
+      <?php foreach ($filters_arr as $filter_id): ?>
+        <?php if ($filter_id === 'order'): ?>
+          <?php if (!$has_order_filter) { continue; } ?>
+          <div class="np-filter np-filter--order">
+            <div class="np-filter__head"><?php esc_html_e('Ordenar','norpumps'); ?></div>
+            <div class="np-filter__body">
+              <label class="np-filter__label" for="<?php echo esc_attr($order_field_id); ?>"><?php esc_html_e('Ordenar productos por','norpumps'); ?></label>
+              <select id="<?php echo esc_attr($order_field_id); ?>" class="np-orderby">
+                <option value="menu_order title" <?php selected($orderby_value, 'menu_order title'); ?>><?php esc_html_e('Predeterminado','norpumps'); ?></option>
+                <option value="price" <?php selected($orderby_value, 'price'); ?>><?php esc_html_e('Precio: bajo a alto','norpumps'); ?></option>
+                <option value="price-desc" <?php selected($orderby_value, 'price-desc'); ?>><?php esc_html_e('Precio: alto a bajo','norpumps'); ?></option>
+              </select>
             </div>
-            <button type="button" class="np-price-apply"><?php esc_html_e('Aplicar','norpumps'); ?></button>
           </div>
-        </div>
-      <?php endif; ?>
-      <?php if ($has_meta_filters): ?>
-        <?php foreach ($meta_filters as $meta_filter):
-            if (empty($meta_filter['options'])){ continue; }
-            $meta_unit = isset($meta_filter['unit']) ? $meta_filter['unit'] : '';
-        ?>
+        <?php elseif ($filter_id === 'price'): ?>
+          <?php if (!$has_price_filter) { continue; } ?>
+          <div class="np-filter np-filter--price">
+            <div class="np-filter__head"><?php esc_html_e('Precio','norpumps'); ?></div>
+            <div class="np-filter__body">
+              <div class="np-price-range" data-default-min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" data-default-max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>">
+                <label class="np-price-range__field">
+                  <span><?php esc_html_e('Mínimo','norpumps'); ?></span>
+                  <input type="number" step="0.01" class="np-price-input np-price-min" min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>" value="<?php echo esc_attr(number_format($current_price_min, 2, '.', '')); ?>">
+                </label>
+                <label class="np-price-range__field">
+                  <span><?php esc_html_e('Máximo','norpumps'); ?></span>
+                  <input type="number" step="0.01" class="np-price-input np-price-max" min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>" value="<?php echo esc_attr(number_format($current_price_max, 2, '.', '')); ?>">
+                </label>
+              </div>
+              <button type="button" class="np-price-apply"><?php esc_html_e('Aplicar','norpumps'); ?></button>
+            </div>
+          </div>
+        <?php elseif ($filter_id === 'cat'): ?>
+          <?php if (!$has_cat_filter) { continue; } ?>
+          <?php foreach ($groups as $g):
+            $parent = get_term_by('slug', $g['slug'], 'product_cat');
+            if (!$parent) { continue; }
+          ?>
+            <div class="np-filter" data-group="<?php echo esc_attr($g['slug']); ?>">
+              <div class="np-filter__head"><?php echo esc_html( strtoupper($g['label']) ); ?></div>
+              <div class="np-filter__body">
+                <?php if ($show_all): ?>
+                  <label class="np-all"><input type="checkbox" class="np-all-toggle" checked> <?php esc_html_e('Todos','norpumps'); ?></label>
+                <?php endif; ?>
+                <div class="np-checklist" data-tax="product_cat" data-group="<?php echo esc_attr($g['slug']); ?>">
+                  <?php
+                  // IMPORTANT: avoid function redeclare fatals in REST/editor
+                  if (!function_exists('np_render_children_only')){
+                      function np_render_children_only($parent_id, $depth=0){
+                          $children = get_terms(['taxonomy'=>'product_cat','hide_empty'=>true,'parent'=>$parent_id]);
+                          foreach ($children as $c){
+                              echo '<label class="depth-'.$depth.'"><input type="checkbox" value="'.esc_attr($c->slug).'"> '.esc_html($c->name).'</label>';
+                              np_render_children_only($c->term_id, $depth+1);
+                          }
+                      }
+                  }
+                  np_render_children_only($parent->term_id,0);
+                  ?>
+                </div>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <?php
+          $meta_filter = norpumps_array_get($meta_filters, $filter_id);
+          if (!$meta_filter || empty($meta_filter['options'])){ continue; }
+          $meta_unit = isset($meta_filter['unit']) ? $meta_filter['unit'] : '';
+          ?>
           <div class="np-filter np-filter--meta" data-meta-id="<?php echo esc_attr($meta_filter['id']); ?>" data-meta-key="<?php echo esc_attr($meta_filter['key']); ?>" data-meta-type="<?php echo esc_attr($meta_filter['type']); ?>"<?php if ($meta_unit !== ''): ?> data-meta-unit="<?php echo esc_attr($meta_unit); ?>"<?php endif; ?>>
             <div class="np-filter__head"><?php echo esc_html(strtoupper($meta_filter['label'])); ?></div>
             <div class="np-filter__body">
@@ -93,37 +125,8 @@ if ($has_any_filter) {
               </div>
             </div>
           </div>
-        <?php endforeach; ?>
-      <?php endif; ?>
-      <?php if ($has_cat_filter): ?>
-        <?php foreach ($groups as $g):
-          $parent = get_term_by('slug', $g['slug'], 'product_cat');
-          if (!$parent) continue; ?>
-          <div class="np-filter" data-group="<?php echo esc_attr($g['slug']); ?>">
-            <div class="np-filter__head"><?php echo esc_html( strtoupper($g['label']) ); ?></div>
-            <div class="np-filter__body">
-              <?php if ($show_all): ?>
-                <label class="np-all"><input type="checkbox" class="np-all-toggle" checked> <?php esc_html_e('Todos','norpumps'); ?></label>
-              <?php endif; ?>
-              <div class="np-checklist" data-tax="product_cat" data-group="<?php echo esc_attr($g['slug']); ?>">
-                <?php
-                // IMPORTANT: avoid function redeclare fatals in REST/editor
-                if (!function_exists('np_render_children_only')){
-                    function np_render_children_only($parent_id, $depth=0){
-                        $children = get_terms(['taxonomy'=>'product_cat','hide_empty'=>true,'parent'=>$parent_id]);
-                        foreach ($children as $c){
-                            echo '<label class="depth-'.$depth.'"><input type="checkbox" value="'.esc_attr($c->slug).'"> '.esc_html($c->name).'</label>';
-                            np_render_children_only($c->term_id, $depth+1);
-                        }
-                    }
-                }
-                np_render_children_only($parent->term_id,0);
-                ?>
-              </div>
-            </div>
-          </div>
-        <?php endforeach; ?>
-      <?php endif; ?>
+        <?php endif; ?>
+      <?php endforeach; ?>
     </aside>
 
     <section class="norpumps-grid">
