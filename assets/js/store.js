@@ -31,6 +31,19 @@ jQuery(function($){
     }
     return val;
   }
+  function getStoredPriceRange($root){
+    const min = parseFloat($root.data('priceMin'));
+    const max = parseFloat($root.data('priceMax'));
+    return {
+      min: isFiniteNumber(min) ? min : null,
+      max: isFiniteNumber(max) ? max : null,
+    };
+  }
+  function priceRangesEqual(a, b){
+    const minEqual = (a.min === null && b.min === null) || (isFiniteNumber(a.min) && isFiniteNumber(b.min) && Math.abs(a.min - b.min) < (1 / PRICE_PRECISION));
+    const maxEqual = (a.max === null && b.max === null) || (isFiniteNumber(a.max) && isFiniteNumber(b.max) && Math.abs(a.max - b.max) < (1 / PRICE_PRECISION));
+    return minEqual && maxEqual;
+  }
   function normalizePriceRange($root){
     const $minInput = $root.find('.np-price-min');
     const $maxInput = $root.find('.np-price-max');
@@ -56,6 +69,17 @@ jQuery(function($){
     $root.data('priceMin', minVal);
     $root.data('priceMax', maxVal);
     return {min:minVal, max:maxVal};
+  }
+  function requestUpdate($root, options){
+    resetToFirstPage($root);
+    load($root, 1, options);
+  }
+  function applyPriceRange($root, options){
+    const previous = getStoredPriceRange($root);
+    const next = normalizePriceRange($root);
+    if (!priceRangesEqual(previous, next) || (options && options.force === true)){
+      requestUpdate($root, $.extend({scroll:true}, options));
+    }
   }
 
   function getDefaultPerPage($root){
@@ -155,19 +179,18 @@ jQuery(function($){
     $root.on('change', '.np-all-toggle', function(){
       const $body = $(this).closest('.np-filter__body');
       $body.find('.np-checklist input[type=checkbox]').prop('checked', false);
-      resetToFirstPage($root);
-      load($root, 1, {scroll:true});
+      requestUpdate($root, {scroll:true});
     });
     $root.on('change', '.np-checklist input[type=checkbox]', function(){
       const $body = $(this).closest('.np-filter__body');
       if ($(this).is(':checked')){ $body.find('.np-all-toggle').prop('checked', false); }
       const anyChecked = $body.find('.np-checklist input:checked').length > 0;
       if (!anyChecked){ $body.find('.np-all-toggle').prop('checked', true); }
-      resetToFirstPage($root);
-      load($root, 1, {scroll:true});
+      requestUpdate($root, {scroll:true});
     });
   }
   function bindPriceFilter($root){
+    if (!$root.find('.np-price-range').length){ return; }
     $root.on('mousedown', '.np-price-apply', function(){
       $root.data('skipPriceBlur', true);
       $(document).one('mouseup.npPrice', function(){
@@ -179,15 +202,11 @@ jQuery(function($){
     });
     $root.on('click', '.np-price-apply', function(e){
       e.preventDefault();
-      normalizePriceRange($root);
-      resetToFirstPage($root);
-      load($root, 1, {scroll:true});
+      applyPriceRange($root, {scroll:true, force:true});
     });
-    $root.on('blur', '.np-price-input', function(){
+    $root.on('blur change', '.np-price-input', function(){
       if ($root.data('skipPriceBlur')){ return; }
-      normalizePriceRange($root);
-      resetToFirstPage($root);
-      load($root, 1, {scroll:true});
+      applyPriceRange($root, {scroll:true});
     });
     $root.on('keyup', '.np-price-input', function(e){
       if (e.keyCode === 13){

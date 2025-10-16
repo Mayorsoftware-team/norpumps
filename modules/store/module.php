@@ -205,20 +205,59 @@ class NorPumps_Modules_Store {
                 }
             }
         }
-        $min_price = norpumps_array_get($_REQUEST, 'min_price', null);
-        $max_price = norpumps_array_get($_REQUEST, 'max_price', null);
-        if ($min_price !== null && $min_price !== ''){
-            $args['min_price'] = max(0, floatval($min_price));
+        $meta_query = [];
+        if (function_exists('WC')){
+            $default_meta_query = WC()->query->get_meta_query();
+            if (is_array($default_meta_query)){
+                $meta_query = $default_meta_query;
+            }
         }
-        if ($max_price !== null && $max_price !== ''){
-            $args['max_price'] = max(0, floatval($max_price));
+        $min_price_raw = norpumps_array_get($_REQUEST, 'min_price', null);
+        $max_price_raw = norpumps_array_get($_REQUEST, 'max_price', null);
+        $has_min_price = $min_price_raw !== null && $min_price_raw !== '';
+        $has_max_price = $max_price_raw !== null && $max_price_raw !== '';
+        $min_price = $has_min_price ? max(0, floatval($min_price_raw)) : null;
+        $max_price = $has_max_price ? max(0, floatval($max_price_raw)) : null;
+        if ($min_price !== null){
+            $args['min_price'] = $min_price;
         }
-        if (isset($args['min_price'], $args['max_price']) && $args['min_price'] > $args['max_price']){
-            $args['max_price'] = $args['min_price'];
+        if ($max_price !== null){
+            $args['max_price'] = $max_price;
+        }
+        if ($min_price !== null && $max_price !== null && $min_price > $max_price){
+            $max_price = $min_price;
+            $args['max_price'] = $max_price;
+        }
+        if ($min_price !== null || $max_price !== null){
+            if ($min_price !== null && $max_price !== null){
+                $meta_query[] = [
+                    'key'=>'_price',
+                    'value'=>[$min_price, $max_price],
+                    'compare'=>'BETWEEN',
+                    'type'=>'DECIMAL(10,2)',
+                ];
+            } elseif ($min_price !== null){
+                $meta_query[] = [
+                    'key'=>'_price',
+                    'value'=>$min_price,
+                    'compare'=>'>=',
+                    'type'=>'DECIMAL(10,2)',
+                ];
+            } else {
+                $meta_query[] = [
+                    'key'=>'_price',
+                    'value'=>$max_price,
+                    'compare'=>'<=',
+                    'type'=>'DECIMAL(10,2)',
+                ];
+            }
         }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
         if ($search !== ''){ $args['s'] = $search; }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
+        if (!empty($meta_query)){
+            $args['meta_query'] = $meta_query;
+        }
         return $args;
     }
     public function ajax_query(){
