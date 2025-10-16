@@ -9,6 +9,16 @@
 .norpumps-filters .np-filter{ margin-bottom:18px; }
 .norpumps-filters .np-filter__head{ background:var(--np-accent); color:#fff; padding:12px 14px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; border-radius:10px 10px 0 0; }
 .norpumps-filters .np-filter__body{ background:#fff; border:1px solid var(--np-border); border-top:none; padding:12px 14px; border-radius:0 0 10px 10px; }
+.np-filter--price .np-filter__body{ display:flex; flex-direction:column; gap:12px; }
+.np-price-range{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; }
+.np-price-field{ display:flex; flex-direction:column; gap:6px; min-width:120px; }
+.np-price-field label{ font-size:13px; font-weight:600; color:#0f5b62; letter-spacing:.02em; text-transform:uppercase; }
+.np-price-field input{ padding:8px 10px; border:1px solid #d7dee2; border-radius:8px; background:#f9fbfc; font-weight:600; color:#0f5b62; }
+.np-price-field input:focus{ outline:none; border-color:#0f5b62; box-shadow:0 0 0 3px rgba(15,91,98,0.15); background:#fff; }
+.np-price-divider{ font-weight:700; color:#0f5b62; font-size:20px; line-height:1; padding-bottom:8px; }
+.np-price-apply.button{ align-self:flex-start; background:linear-gradient(135deg,#1f7c85,#0f5b62); border:none; padding:8px 18px; border-radius:999px; box-shadow:0 6px 16px rgba(15,91,98,0.18); }
+.np-price-apply.button:hover{ filter:brightness(1.05); }
+.np-price-apply.button:focus{ outline:none; box-shadow:0 0 0 3px rgba(31,124,133,0.25); }
 .norpumps-filters .np-checklist label{ display:block; margin:8px 0; color:#111; }
 .norpumps-filters .np-checklist .depth-1{ padding-left:12px; opacity:.95 }
 .norpumps-filters .np-checklist .depth-2{ padding-left:24px; opacity:.9 }
