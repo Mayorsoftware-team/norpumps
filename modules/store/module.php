@@ -33,6 +33,7 @@ class NorPumps_Modules_Store {
                     <label><?php esc_html_e('Filtros activos','norpumps'); ?></label>
                     <label class="np-chip"><input type="checkbox" id="f_cat" checked> <?php esc_html_e('Secciones de categorías','norpumps');?></label>
                     <label class="np-chip"><input type="checkbox" id="f_price" checked> <?php esc_html_e('Rango de precios','norpumps');?></label>
+                    <label class="np-chip"><input type="checkbox" id="f_order" checked> <?php esc_html_e('Ordenar productos','norpumps');?></label>
                 </div>
                 <div class="np-row">
                     <label><?php esc_html_e('Rango de precios','norpumps'); ?></label>
@@ -71,8 +72,9 @@ class NorPumps_Modules_Store {
                 const perPage = $('#np_per_page').val()||12;
                 const page = $('#np_page').val()||1;
                 const filters = [];
-                if ($('#f_cat').is(':checked')) filters.push('cat');
+                if ($('#f_order').is(':checked')) filters.push('order');
                 if ($('#f_price').is(':checked')) filters.push('price');
+                if ($('#f_cat').is(':checked')) filters.push('cat');
                 const rawPriceMin = parseFloat($('#np_price_min').val());
                 const rawPriceMax = parseFloat($('#np_price_max').val());
                 const priceMin = isFiniteNumber(rawPriceMin) && rawPriceMin >= 0 ? rawPriceMin : 0;
