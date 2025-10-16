@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: NorPumps Suite
- * Description: v1.2.2 — Tienda solo con categorías. Padre = título; hijas = checkboxes. AJAX + URL amigables. Slider precio. Admin con autocompletar. (Fix JSON/func redeclare) + módulo techsheet
+ * Description: v1.2.2 — Tienda solo con categorías. Padre = título; hijas = checkboxes. AJAX + URL amigables. Admin con autocompletar. (Fix JSON/func redeclare) + módulo techsheet
  * Version: 1.2.2
  * Author: Alfonso (fiverr)
  * Requires at least: 6.0
