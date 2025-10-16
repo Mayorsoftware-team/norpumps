@@ -150,21 +150,29 @@ jQuery(function($){
       $root.removeClass('is-loading');
     });
   }
+  function triggerReload($root, options){
+    const opts = $.extend({scroll:true, resetPage:false, normalize:false}, options);
+    if (opts.normalize){ normalizePriceRange($root); }
+    if (opts.resetPage){
+      resetToFirstPage($root);
+      load($root, 1, {scroll:opts.scroll});
+      return;
+    }
+    load($root, undefined, {scroll:opts.scroll});
+  }
   function resetToFirstPage($root){ setCurrentPage($root, 1); }
   function bindAllToggle($root){
     $root.on('change', '.np-all-toggle', function(){
       const $body = $(this).closest('.np-filter__body');
       $body.find('.np-checklist input[type=checkbox]').prop('checked', false);
-      resetToFirstPage($root);
-      load($root, 1, {scroll:true});
+      triggerReload($root, {resetPage:true, normalize:true});
     });
     $root.on('change', '.np-checklist input[type=checkbox]', function(){
       const $body = $(this).closest('.np-filter__body');
       if ($(this).is(':checked')){ $body.find('.np-all-toggle').prop('checked', false); }
       const anyChecked = $body.find('.np-checklist input:checked').length > 0;
       if (!anyChecked){ $body.find('.np-all-toggle').prop('checked', true); }
-      resetToFirstPage($root);
-      load($root, 1, {scroll:true});
+      triggerReload($root, {resetPage:true, normalize:true});
     });
   }
   function bindPriceFilter($root){
@@ -179,15 +187,11 @@ jQuery(function($){
     });
     $root.on('click', '.np-price-apply', function(e){
       e.preventDefault();
-      normalizePriceRange($root);
-      resetToFirstPage($root);
-      load($root, 1, {scroll:true});
+      triggerReload($root, {resetPage:true, normalize:true});
     });
     $root.on('blur', '.np-price-input', function(){
       if ($root.data('skipPriceBlur')){ return; }
-      normalizePriceRange($root);
-      resetToFirstPage($root);
-      load($root, 1, {scroll:true});
+      triggerReload($root, {resetPage:true, normalize:true});
     });
     $root.on('keyup', '.np-price-input', function(e){
       if (e.keyCode === 13){
@@ -202,14 +206,17 @@ jQuery(function($){
     setPerPage($root, getPerPage($root));
     setCurrentPage($root, getCurrentPage($root));
 
-    $root.on('change', '.np-orderby select', function(){ resetToFirstPage($root); load($root, 1, {scroll:true}); });
-    $root.on('keyup', '.np-search', function(e){ if (e.keyCode === 13){ resetToFirstPage($root); load($root, 1, {scroll:true}); } });
+    $root.on('change', '.np-orderby select', function(){ triggerReload($root, {resetPage:true, normalize:true}); });
+    $root.on('keyup', '.np-search', function(e){ if (e.keyCode === 13){ triggerReload($root, {resetPage:true, normalize:true}); } });
     $root.on('click', '.js-np-page', function(e){
       e.preventDefault();
       const $item = $(this).closest('.np-pagination__item');
       if ($item.hasClass('is-disabled') || $item.hasClass('is-active')) return;
       const page = parseInt($(this).data('page'), 10);
-      if (isFiniteNumber(page) && page > 0){ load($root, page, {scroll:true}); }
+      if (isFiniteNumber(page) && page > 0){
+        normalizePriceRange($root);
+        load($root, page, {scroll:true});
+      }
     });
 
     bindAllToggle($root);
