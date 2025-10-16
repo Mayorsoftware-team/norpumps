@@ -104,6 +104,7 @@ class NorPumps_Modules_Store {
             'groups'=>'', // "Label:slugPadre|Label2:slugPadre2"
             'show_all'=>'yes',
             'per_page'=>12,'order'=>'menu_order title','page'=>1,
+            'price_min'=>0,'price_max'=>10000,
         ], $atts, 'norpumps_store');
         $columns = max(2, min(6, intval($atts['columns'])));
         $per_page = max(1, min(60, intval($atts['per_page'])));
@@ -120,6 +121,20 @@ class NorPumps_Modules_Store {
         $orderby_query = sanitize_text_field(norpumps_array_get($_GET,'orderby','menu_order title'));
         if (!in_array($orderby_query, $allowed_orderby, true)){
             $orderby_query = 'menu_order title';
+        }
+        $price_min_default = max(0, intval($atts['price_min']));
+        $price_max_default = intval($atts['price_max']);
+        if ($price_max_default <= $price_min_default){
+            $price_max_default = $price_min_default + 1;
+        }
+        $price_step = max(1, intval(ceil(($price_max_default - $price_min_default) / 100)));
+        $price_selected_min = isset($_GET['price_min']) ? floatval($_GET['price_min']) : $price_min_default;
+        $price_selected_max = isset($_GET['price_max']) ? floatval($_GET['price_max']) : $price_max_default;
+        $price_selected_min = max($price_min_default, min($price_max_default, $price_selected_min));
+        $price_selected_max = max($price_min_default, min($price_max_default, $price_selected_max));
+        if ($price_selected_min > $price_selected_max){
+            $price_selected_min = $price_min_default;
+            $price_selected_max = $price_max_default;
         }
         wp_enqueue_script('wc-add-to-cart');
         wp_enqueue_script('wc-cart-fragments');
@@ -169,6 +184,17 @@ class NorPumps_Modules_Store {
                     $tax_query[] = ['taxonomy'=>'product_cat','field'=>'slug','terms'=>$slugs,'include_children'=>true,'operator'=>'IN'];
                 }
             }
+        }
+        $min_price_request = norpumps_array_get($_REQUEST,'price_min', null);
+        $max_price_request = norpumps_array_get($_REQUEST,'price_max', null);
+        if ($min_price_request !== null && $min_price_request !== ''){
+            $args['min_price'] = max(0, floatval($min_price_request));
+        }
+        if ($max_price_request !== null && $max_price_request !== ''){
+            $args['max_price'] = max(0, floatval($max_price_request));
+        }
+        if (isset($args['min_price'], $args['max_price']) && $args['min_price'] > $args['max_price']){
+            $args['max_price'] = $args['min_price'];
         }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
         if ($search !== ''){ $args['s'] = $search; }
