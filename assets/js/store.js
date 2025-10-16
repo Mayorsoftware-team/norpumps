@@ -189,6 +189,7 @@ jQuery(function($){
     const $backdrop = $root.find('.np-filters-backdrop');
     if (!$trigger.length || !$filters.length){ return; }
     const $closeBtn = $filters.find('.np-filters-close');
+    const mobileCloseClass = 'np-show-mobile-close';
     const instanceId = Math.random().toString(36).slice(2);
     const mediaQuery = window.matchMedia ? window.matchMedia('(max-width: 1024px)') : null;
     function isMobile(){
@@ -222,10 +223,15 @@ jQuery(function($){
       }
     }
     function syncCloseButton(){
-      if (!$closeBtn.length){ return; }
+      if (!$closeBtn.length){
+        $root.removeClass(mobileCloseClass);
+        return;
+      }
       if (isMobile()){
+        $root.addClass(mobileCloseClass);
         $closeBtn.removeAttr('hidden');
       } else {
+        $root.removeClass(mobileCloseClass);
         $closeBtn.attr('hidden', 'hidden');
       }
     }
