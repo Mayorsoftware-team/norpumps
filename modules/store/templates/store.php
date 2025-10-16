@@ -13,7 +13,9 @@ $default_price_max_attr = isset($default_price_max) ? floatval($default_price_ma
 $has_price_filter = in_array('price', $filters_arr, true);
 $has_order_filter = in_array('order', $filters_arr, true);
 $has_cat_filter = in_array('cat', $filters_arr, true) && !empty($groups);
-$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter;
+$meta_filters = isset($meta_filters) && is_array($meta_filters) ? $meta_filters : [];
+$has_meta_filters = !empty($meta_filters);
+$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter || $has_meta_filters;
 $filters_element_id = 'np-filters-'.uniqid();
 $order_field_id = 'np-orderby-'.uniqid();
 ?>
@@ -66,6 +68,49 @@ if ($has_any_filter) {
             <button type="button" class="np-price-apply"><?php esc_html_e('Aplicar','norpumps'); ?></button>
           </div>
         </div>
+      <?php endif; ?>
+      <?php if ($has_meta_filters): ?>
+        <?php foreach ($meta_filters as $meta_filter):
+          if (empty($meta_filter['bins'])){
+              continue;
+          }
+          $filter_name = isset($meta_filter['name']) ? sanitize_key($meta_filter['name']) : '';
+          if ($filter_name === ''){
+              continue;
+          }
+          $filter_key = isset($meta_filter['key']) ? $meta_filter['key'] : '';
+          $filter_label = isset($meta_filter['label']) ? $meta_filter['label'] : $filter_key;
+          $filter_type = isset($meta_filter['type']) ? $meta_filter['type'] : 'range';
+          $filter_bins = $meta_filter['bins'];
+          $data_bins = array_map(function($bin){
+              return [
+                  'value'=>isset($bin['value']) ? $bin['value'] : '',
+                  'min'=>isset($bin['min']) ? $bin['min'] : null,
+                  'max'=>isset($bin['max']) ? $bin['max'] : null,
+              ];
+          }, $filter_bins);
+          $json_bins = !empty($data_bins) ? wp_json_encode($data_bins) : '';
+        ?>
+          <div class="np-filter np-filter--meta" data-meta-filter data-name="<?php echo esc_attr($filter_name); ?>" data-key="<?php echo esc_attr($filter_key); ?>" data-type="<?php echo esc_attr($filter_type); ?>" <?php if ($json_bins): ?>data-bins='<?php echo esc_attr($json_bins); ?>'<?php endif; ?>>
+            <div class="np-filter__head"><?php echo esc_html($filter_label); ?></div>
+            <div class="np-filter__body">
+              <div class="np-checklist np-checklist--meta" data-meta="<?php echo esc_attr($filter_name); ?>">
+                <?php foreach ($filter_bins as $idx=>$bin):
+                  $value = isset($bin['value']) ? $bin['value'] : '';
+                  if ($value === ''){ continue; }
+                  $is_checked = !empty($bin['selected']);
+                  $checkbox_id = $filter_name.'-'.$idx.'-'.uniqid();
+                  $label = isset($bin['label']) ? $bin['label'] : $value;
+                ?>
+                  <label class="np-meta-option" for="<?php echo esc_attr($checkbox_id); ?>">
+                    <input id="<?php echo esc_attr($checkbox_id); ?>" type="checkbox" value="<?php echo esc_attr($value); ?>" <?php checked($is_checked); ?>>
+                    <span><?php echo esc_html($label); ?></span>
+                  </label>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          </div>
+        <?php endforeach; ?>
       <?php endif; ?>
       <?php if ($has_cat_filter): ?>
         <?php foreach ($groups as $g):

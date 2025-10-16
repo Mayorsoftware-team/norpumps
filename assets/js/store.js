@@ -133,6 +133,27 @@ jQuery(function($){
         data['cat_'+group] = vals.join(',');
       }
     });
+    $root.find('[data-meta-filter]').each(function(){
+      const $filter = $(this);
+      const name = $filter.data('name');
+      if (!name){ return; }
+      const values = $filter.find('input[type=checkbox]:checked').map(function(){ return this.value; }).get();
+      if (values.length){
+        data[name] = values.join(',');
+      }
+      const key = $filter.data('key');
+      if (key){
+        data[name+'_key'] = key;
+      }
+      const type = $filter.data('type');
+      if (type){
+        data[name+'_type'] = type;
+      }
+      const binsAttr = $filter.attr('data-bins');
+      if (binsAttr){
+        data[name+'_bins'] = binsAttr;
+      }
+    });
     return data;
   }
   function toQuery($root, obj){
@@ -144,6 +165,7 @@ jQuery(function($){
       if (obj[key] === '' || obj[key] == null) return;
       if (key === 'page' && parseInt(obj[key], 10) === defaultPage) return;
       if (key === 'per_page' && parseInt(obj[key], 10) === defaultPer) return;
+      if (/^mf\d+_(key|type|bins)$/.test(key)) return;
       params.set(key, obj[key]);
     });
     return params.toString();
@@ -313,6 +335,11 @@ jQuery(function($){
       }
     });
   }
+  function bindMetaFilters($root){
+    $root.on('change', '[data-meta-filter] input[type=checkbox]', function(){
+      requestUpdate($root, {scroll:true});
+    });
+  }
 
   $('.norpumps-store').each(function(){
     const $root = $(this);
@@ -334,6 +361,7 @@ jQuery(function($){
 
     bindAllToggle($root);
     bindPriceFilter($root);
+    bindMetaFilters($root);
     setupMobileFilters($root);
 
     const url = new URL(window.location.href);
@@ -349,6 +377,19 @@ jQuery(function($){
           if (values.includes(this.value)){ this.checked = true; }
         });
       }
+    });
+
+    $root.find('[data-meta-filter]').each(function(){
+      const $filter = $(this);
+      const name = $filter.data('name');
+      if (!name) return;
+      const values = (url.searchParams.get(name) || '').split(',').filter(Boolean);
+      if (!values.length) return;
+      $filter.find('input[type=checkbox]').each(function(){
+        if (values.includes(this.value)){
+          this.checked = true;
+        }
+      });
     });
 
     const queryOrder = url.searchParams.get('orderby');
