@@ -381,14 +381,30 @@ class NorPumps_Modules_Store {
             include __DIR__.'/templates/card.php';
         }
         wp_reset_postdata();
+        $html = ob_get_clean();
+        if (trim($html) === ''){
+            $html = $this->render_empty_state_html();
+        }
         wp_send_json_success([
-            'html'=>ob_get_clean(),
+            'html'=>$html,
             'pagination_html'=>$this->render_pagination_html(max(1, intval($args['page'] ?? 1)), max(1, $max_pages)),
             'total'=>$total,
             'page'=>max(1, intval($args['page'] ?? 1)),
             'max_pages'=>max(1, $max_pages),
             'args'=>$args,
         ]);
+    }
+    private function render_empty_state_html(){
+        $title = esc_html__('No encontramos resultados', 'norpumps');
+        $message = esc_html__('Ajusta los filtros o limpia la búsqueda para intentarlo de nuevo.', 'norpumps');
+        $icon_label = esc_html__('Sin resultados', 'norpumps');
+        $html  = '<div class="np-empty-state" role="status" aria-live="polite">';
+        $html .= '<span class="np-empty-state__icon" aria-hidden="true" role="img">🔎</span>';
+        $html .= '<span class="screen-reader-text">'.$icon_label.'</span>';
+        $html .= '<h3 class="np-empty-state__title">'.$title.'</h3>';
+        $html .= '<p class="np-empty-state__description">'.$message.'</p>';
+        $html .= '</div>';
+        return $html;
     }
     private function render_pagination_html($current_page, $total_pages){
         if ($total_pages <= 1){
