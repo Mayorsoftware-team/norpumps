@@ -119,6 +119,7 @@ class NorPumps_Modules_Store {
         wp_send_json_success($out);
     }
     public function shortcode_store($atts){
+        $raw_atts = is_array($atts) ? $atts : [];
         $atts = shortcode_atts([
             'columns'=>4,
             'filters'=>'cat',
@@ -128,6 +129,14 @@ class NorPumps_Modules_Store {
             'price_min'=>0,
             'price_max'=>10000,
         ], $atts, 'norpumps_store');
+        foreach ($raw_atts as $name => $value){
+            if (!is_string($name)){
+                continue;
+            }
+            if (preg_match('/^meta\d+_/i', $name)){
+                $atts[$name] = $value;
+            }
+        }
         $columns = max(2, min(6, intval($atts['columns'])));
         $per_page = max(1, min(60, intval($atts['per_page'])));
         $groups = [];
