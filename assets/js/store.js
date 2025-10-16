@@ -1,9 +1,7 @@
 jQuery(function($){
   const ORDER_DIRECTIONS = {
     'price':'ASC',
-    'price-desc':'DESC',
-    'date':'DESC',
-    'popularity':'DESC'
+    'price-desc':'DESC'
   };
   const SCROLL_OFFSET = 120;
   const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
