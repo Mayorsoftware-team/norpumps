@@ -9,7 +9,7 @@ body.np-filters-modal-open { overflow:hidden; }
 .np-filters-trigger:hover{ box-shadow:0 16px 34px rgba(15,91,98,0.35); background:#0d4c52; }
 .np-filters-trigger:active{ box-shadow:0 10px 24px rgba(15,91,98,0.28); }
 .np-filters-backdrop{ display:none; }
-.np-filters-close{ display:none !important; }
+.np-filters-close{ display:none; }
 @media(max-width: 960px){ .norpumps-store__layout{ grid-template-columns:1fr; } }
 .norpumps-store.has-mobile-filters .np-filters-trigger{ display:none; }
 @media(max-width: 1024px){
