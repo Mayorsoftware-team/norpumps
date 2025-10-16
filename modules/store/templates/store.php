@@ -27,6 +27,50 @@ if (!isset($filters_arr)) $filters_arr = [];
 
   <div class="norpumps-store__layout">
     <aside class="norpumps-filters">
+      <?php if (in_array('price',$filters_arr, true)): ?>
+        <?php
+          $price_bounds_min = isset($price_min_bound) ? floatval($price_min_bound) : 0;
+          $price_bounds_max = isset($price_max_bound) ? floatval($price_max_bound) : $price_bounds_min;
+          $price_current_min = isset($requested_price_min) ? floatval($requested_price_min) : $price_bounds_min;
+          $price_current_max = isset($requested_price_max) ? floatval($requested_price_max) : $price_bounds_max;
+          if ($price_current_min < $price_bounds_min) { $price_current_min = $price_bounds_min; }
+          if ($price_current_max > $price_bounds_max) { $price_current_max = $price_bounds_max; }
+          if ($price_current_min > $price_current_max) { $price_current_min = $price_bounds_min; $price_current_max = $price_bounds_max; }
+          $price_step_value = isset($price_step) ? floatval($price_step) : 1;
+        ?>
+        <div class="np-filter np-filter--price" data-filter="price">
+          <div class="np-filter__head"><?php esc_html_e('Precio','norpumps'); ?></div>
+          <div class="np-filter__body">
+            <div class="np-price-range" data-min="<?php echo esc_attr($price_bounds_min); ?>" data-max="<?php echo esc_attr($price_bounds_max); ?>" data-step="<?php echo esc_attr($price_step_value); ?>" data-value-min="<?php echo esc_attr($price_current_min); ?>" data-value-max="<?php echo esc_attr($price_current_max); ?>">
+              <div class="np-price-range__fields">
+                <label>
+                  <span><?php esc_html_e('Mínimo','norpumps'); ?></span>
+                  <input type="number" class="np-price-range__input np-price-range__input--min" value="<?php echo esc_attr($price_current_min); ?>" min="<?php echo esc_attr($price_bounds_min); ?>" max="<?php echo esc_attr($price_bounds_max); ?>" step="<?php echo esc_attr($price_step_value); ?>">
+                </label>
+                <label>
+                  <span><?php esc_html_e('Máximo','norpumps'); ?></span>
+                  <input type="number" class="np-price-range__input np-price-range__input--max" value="<?php echo esc_attr($price_current_max); ?>" min="<?php echo esc_attr($price_bounds_min); ?>" max="<?php echo esc_attr($price_bounds_max); ?>" step="<?php echo esc_attr($price_step_value); ?>">
+                </label>
+              </div>
+              <div class="np-price-range__slider">
+                <div class="np-price-range__track"></div>
+              </div>
+              <div class="np-price-range__ranges">
+                <input type="range" class="np-price-range__range np-price-range__range--min" min="<?php echo esc_attr($price_bounds_min); ?>" max="<?php echo esc_attr($price_bounds_max); ?>" step="<?php echo esc_attr($price_step_value); ?>" value="<?php echo esc_attr($price_current_min); ?>">
+                <input type="range" class="np-price-range__range np-price-range__range--max" min="<?php echo esc_attr($price_bounds_min); ?>" max="<?php echo esc_attr($price_bounds_max); ?>" step="<?php echo esc_attr($price_step_value); ?>" value="<?php echo esc_attr($price_current_max); ?>">
+              </div>
+              <div class="np-price-range__legend">
+                <?php
+                  $legend_min = function_exists('wc_price') ? wc_price($price_bounds_min) : number_format_i18n($price_bounds_min);
+                  $legend_max = function_exists('wc_price') ? wc_price($price_bounds_max) : number_format_i18n($price_bounds_max);
+                ?>
+                <span><?php echo wp_kses_post($legend_min); ?></span>
+                <span><?php echo wp_kses_post($legend_max); ?></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
       <?php if (in_array('cat',$filters_arr) && !empty($groups)): ?>
         <?php foreach ($groups as $g):
           $parent = get_term_by('slug', $g['slug'], 'product_cat');
