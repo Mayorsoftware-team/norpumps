@@ -51,33 +51,35 @@ jQuery(function($){
     });
   }
   function bindPriceSlider($root){
-    let pending = false;
-    let suppressChange = false;
-    let suppressTimer = null;
-    const endEvents = 'mouseup touchend pointerup';
+    let debounceTimer = null;
+    function getLast(){
+      return $root.data('np-price-last') || {min:null,max:null};
+    }
+    function setLast(pr){
+      $root.data('np-price-last', pr);
+    }
+    function scheduleLoad(immediate){
+      if (debounceTimer){
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
+      const runner = function(){
+        const pr = syncPriceUI($root);
+        if (!pr || (pr.min==null && pr.max==null)) return;
+        const last = getLast();
+        const changed = pr.min !== last.min || pr.max !== last.max;
+        setLast(pr);
+        if (changed) load($root);
+      };
+      if (immediate) runner(); else debounceTimer = setTimeout(runner, 160);
+    }
     $root
       .on('input', '.np-price__slider input[type=range]', function(){
-        pending = true;
         syncPriceUI($root);
-      })
-      .on(endEvents, '.np-price__slider input[type=range]', function(){
-        if (!pending) return;
-        suppressChange = true;
-        if (suppressTimer) clearTimeout(suppressTimer);
-        suppressTimer = setTimeout(function(){ suppressChange = false; suppressTimer = null; }, 150);
-        pending = false;
-        load($root);
+        scheduleLoad(false);
       })
       .on('change', '.np-price__slider input[type=range]', function(){
-        syncPriceUI($root);
-        if (suppressChange){
-          suppressChange = false;
-          if (suppressTimer) clearTimeout(suppressTimer);
-          suppressTimer = null;
-          return;
-        }
-        pending = false;
-        load($root);
+        scheduleLoad(true);
       });
   }
   $('.norpumps-store').each(function(){
@@ -90,7 +92,10 @@ jQuery(function($){
     const pmin = url.searchParams.get('min_price'), pmax = url.searchParams.get('max_price');
     if (pmin!=null) $root.find('.np-range-min').val(pmin);
     if (pmax!=null) $root.find('.np-range-max').val(pmax);
-    syncPriceUI($root);
+    const initialSnapshot = syncPriceUI($root);
+    if (initialSnapshot && (initialSnapshot.min!=null || initialSnapshot.max!=null)){
+      $root.data('np-price-last', initialSnapshot);
+    }
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
       const group = $(this).data('group'); const key = 'cat_'+group;
       const vals = (url.searchParams.get(key)||'').split(',').filter(Boolean);
