@@ -163,6 +163,13 @@ class NorPumps_Modules_Store {
         wp_enqueue_style('woocommerce-general');
         ob_start();
         $filters_arr = array_filter(array_map('trim', explode(',', $atts['filters'])));
+        $meta_filters_all = $this->parse_meta_filters_from_atts($atts);
+        $meta_filters = [];
+        foreach ($filters_arr as $filter_id){
+            if (isset($meta_filters_all[$filter_id])){
+                $meta_filters[$filter_id] = $meta_filters_all[$filter_id];
+            }
+        }
         include __DIR__.'/templates/store.php';
         return ob_get_clean();
     }
@@ -259,6 +266,71 @@ class NorPumps_Modules_Store {
                 ];
             }
         }
+        foreach ($_REQUEST as $raw_key => $raw_value){
+            if (!is_string($raw_key) || strpos($raw_key, 'meta_') !== 0){
+                continue;
+            }
+            if (substr($raw_key, -4) === '_key' || substr($raw_key, -5) === '_type'){
+                continue;
+            }
+            if (!preg_match('/^meta_(meta\d+)$/', $raw_key, $matches)){
+                continue;
+            }
+            $meta_id = $matches[1];
+            $values = [];
+            if (is_array($raw_value)){
+                foreach ($raw_value as $item){
+                    $values[] = trim((string)$item);
+                }
+            } else {
+                foreach (explode(',', (string)$raw_value) as $chunk){
+                    $values[] = trim($chunk);
+                }
+            }
+            $values = array_filter($values, function($item){ return $item !== ''; });
+            if (!$values){
+                continue;
+            }
+            $meta_key_param = 'meta_'.$meta_id.'_key';
+            $meta_type_param = 'meta_'.$meta_id.'_type';
+            $meta_key_raw = norpumps_array_get($_REQUEST, $meta_key_param, '');
+            $meta_type_raw = norpumps_array_get($_REQUEST, $meta_type_param, '');
+            $meta_key = sanitize_text_field($meta_key_raw);
+            $meta_type = strtolower(sanitize_key($meta_type_raw));
+            if ($meta_key === '' || $meta_type === ''){
+                continue;
+            }
+            switch ($meta_type){
+                case 'range':
+                    $range_group = ['relation'=>'OR'];
+                    foreach ($values as $value){
+                        $bounds = $this->parse_meta_range_bounds($value);
+                        if (!$bounds){
+                            continue;
+                        }
+                        $range_group[] = [
+                            'key'=>$meta_key,
+                            'value'=>[$bounds[0], $bounds[1]],
+                            'compare'=>'BETWEEN',
+                            'type'=>'DECIMAL(20,6)',
+                        ];
+                    }
+                    if (count($range_group) > 1){
+                        $meta_query[] = $range_group;
+                    }
+                    break;
+                default:
+                    $meta_query[] = [
+                        'key'=>$meta_key,
+                        'value'=>array_values($values),
+                        'compare'=>'IN',
+                    ];
+                    break;
+            }
+        }
+        if (!empty($meta_query) && !isset($meta_query['relation'])){
+            $meta_query['relation'] = 'AND';
+        }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
         if ($search !== ''){ $args['s'] = $search; }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
@@ -343,5 +415,84 @@ class NorPumps_Modules_Store {
         );
         $html .= '</ul></nav>';
         return $html;
+    }
+    private function parse_meta_filters_from_atts($atts){
+        $meta_filters = [];
+        foreach ($atts as $name=>$value){
+            if (!is_string($name)){
+                continue;
+            }
+            if (!preg_match('/^meta(\d+)_([a-z0-9_]+)$/i', $name, $matches)){
+                continue;
+            }
+            $index = 'meta'.$matches[1];
+            $prop = strtolower($matches[2]);
+            if (!isset($meta_filters[$index])){
+                $meta_filters[$index] = [
+                    'id'=>$index,
+                ];
+            }
+            $meta_filters[$index][$prop] = $value;
+        }
+        foreach ($meta_filters as $id=>$config){
+            $config['key'] = isset($config['key']) ? sanitize_text_field($config['key']) : '';
+            $config['label'] = isset($config['label']) && $config['label'] !== '' ? sanitize_text_field($config['label']) : strtoupper($id);
+            $raw_type = isset($config['type']) ? $config['type'] : '';
+            $config['type'] = $raw_type !== '' ? strtolower(sanitize_key($raw_type)) : '';
+            $config['unit'] = isset($config['unit']) ? sanitize_text_field($config['unit']) : '';
+            $config['options'] = [];
+            if ($config['type'] === 'range'){
+                $bins_raw = isset($config['bins']) ? $config['bins'] : '';
+                $bins = array_filter(array_map('trim', explode('|', $bins_raw)));
+                foreach ($bins as $bin){
+                    $bounds = $this->parse_meta_range_bounds($bin);
+                    if (!$bounds){
+                        continue;
+                    }
+                    $config['options'][] = [
+                        'value'=>$this->format_meta_range_value($bounds[0], $bounds[1]),
+                        'label'=>$this->format_meta_range_label($bounds[0], $bounds[1], $config['unit']),
+                        'min'=>$bounds[0],
+                        'max'=>$bounds[1],
+                    ];
+                }
+            }
+            if (empty($config['key']) || empty($config['type']) || empty($config['options'])){
+                unset($meta_filters[$id]);
+                continue;
+            }
+            $meta_filters[$id] = $config;
+        }
+        return $meta_filters;
+    }
+    private function parse_meta_range_bounds($value){
+        $normalized = str_replace(',', '.', (string)$value);
+        if (!preg_match('/^\s*(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)\s*$/', $normalized, $matches)){
+            return null;
+        }
+        $min = floatval($matches[1]);
+        $max = floatval($matches[2]);
+        if ($max < $min){
+            $tmp = $min;
+            $min = $max;
+            $max = $tmp;
+        }
+        return [$min, $max];
+    }
+    private function format_meta_range_value($min, $max){
+        return $this->format_meta_number($min).'-'.$this->format_meta_number($max);
+    }
+    private function format_meta_range_label($min, $max, $unit=''){
+        $unit = trim((string)$unit);
+        $suffix = $unit === '' ? '' : ' '.$unit;
+        return sprintf(__('De %1$s a %2$s%3$s','norpumps'), $this->format_meta_number($min), $this->format_meta_number($max), $suffix);
+    }
+    private function format_meta_number($number){
+        $formatted = number_format((float)$number, 6, '.', '');
+        $formatted = rtrim(rtrim($formatted, '0'), '.');
+        if ($formatted === ''){
+            $formatted = '0';
+        }
+        return $formatted;
     }
 }
