@@ -1,5 +1,5 @@
 /* v1.2.1 — estilo similar al screenshot */
-.norpumps-store { --np-accent:#0f5b62; --np-bg:#fff; --np-text:#111; --np-border:#e3e9ee; }
+.norpumps-store { --np-accent:#0f5b62; --np-bg:#fff; --np-text:#111; --np-border:#e3e9ee; --np-price-accent:#083640; }
 .norpumps-store a { color:#0a66a1; text-decoration:none; }
 .norpumps-store .norpumps-store__header{ display:flex; justify-content:space-between; align-items:center; margin:10px 0 20px; }
 .norpumps-store .np-orderby select, .norpumps-store .np-search input{ padding:8px 10px; border:1px solid #d7dee2; border-radius:6px; background:#fff; }
@@ -9,6 +9,24 @@
 .norpumps-filters .np-filter{ margin-bottom:18px; }
 .norpumps-filters .np-filter__head{ background:var(--np-accent); color:#fff; padding:12px 14px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; border-radius:10px 10px 0 0; }
 .norpumps-filters .np-filter__body{ background:#fff; border:1px solid var(--np-border); border-top:none; padding:12px 14px; border-radius:0 0 10px 10px; }
+.norpumps-filters .np-filter--price .np-filter__head{ background:var(--np-price-accent); }
+.norpumps-filters .np-filter--price .np-filter__body{ display:flex; flex-direction:column; gap:14px; }
+.np-price-range{ display:flex; flex-direction:column; gap:14px; }
+.np-price-range__header{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-weight:600; color:var(--np-price-accent); }
+.np-price-value{ font-size:14px; }
+.np-price-reset{ background:transparent; border:1px solid var(--np-price-accent); color:var(--np-price-accent); border-radius:999px; padding:6px 14px; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s ease; }
+.np-price-reset:hover{ background:var(--np-price-accent); color:#fff; }
+.np-price-range__sliders{ position:relative; height:38px; }
+.np-price-range__sliders::before{ content:""; position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); height:6px; border-radius:999px; background:#d7dee2; }
+.np-price-progress{ position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); height:6px; border-radius:999px; background:var(--np-price-accent); box-shadow:0 4px 10px rgba(8,54,64,0.25); z-index:1; }
+.np-price-input{ position:absolute; left:0; right:0; width:100%; height:38px; margin:0; padding:0; appearance:none; background:none; pointer-events:none; z-index:2; }
+.np-price-input::-webkit-slider-thumb{ appearance:none; pointer-events:auto; width:18px; height:18px; border-radius:50%; background:var(--np-price-accent); border:2px solid #fff; box-shadow:0 4px 12px rgba(8,54,64,0.35); cursor:pointer; }
+.np-price-input::-webkit-slider-runnable-track{ height:6px; background:transparent; }
+.np-price-input::-moz-range-thumb{ pointer-events:auto; width:18px; height:18px; border-radius:50%; background:var(--np-price-accent); border:2px solid #fff; box-shadow:0 4px 12px rgba(8,54,64,0.35); cursor:pointer; }
+.np-price-input::-moz-range-track{ height:6px; background:transparent; }
+.np-price-input::-ms-thumb{ pointer-events:auto; width:18px; height:18px; border-radius:50%; background:var(--np-price-accent); border:2px solid #fff; box-shadow:0 4px 12px rgba(8,54,64,0.35); cursor:pointer; }
+.np-price-input::-ms-track{ height:6px; background:transparent; border-color:transparent; color:transparent; }
+.np-price-input::-ms-fill-lower, .np-price-input::-ms-fill-upper{ background:transparent; }
 .norpumps-filters .np-checklist label{ display:block; margin:8px 0; color:#111; }
 .norpumps-filters .np-checklist .depth-1{ padding-left:12px; opacity:.95 }
 .norpumps-filters .np-checklist .depth-2{ padding-left:24px; opacity:.9 }
@@ -44,6 +62,7 @@
 .norpumps-admin .np-chip{ display:inline-flex; align-items:center; gap:6px; background:#eef7f8; padding:6px 10px; border-radius:999px; margin-right:8px; }
 .norpumps-admin .np-group{ display:flex; gap:10px; align-items:center; margin:8px 0; }
 .norpumps-admin .np-group input{ padding:6px 8px; }
+.norpumps-admin .np-row--price input{ max-width:160px; }
 .norpumps-admin .np-autocomplete{ position:relative; background:#fff; border:1px solid #ccd; padding:6px; border-radius:8px; margin-top:6px; max-width:520px; }
 .norpumps-admin .np-autocomplete .np-opt{ padding:6px 8px; cursor:pointer; }
 .norpumps-admin .np-autocomplete .np-opt:hover{ background:#f5f8fb; }
