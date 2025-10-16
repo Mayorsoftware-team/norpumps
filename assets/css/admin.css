@@ -9,6 +9,16 @@
 .norpumps-filters .np-filter{ margin-bottom:18px; }
 .norpumps-filters .np-filter__head{ background:var(--np-accent); color:#fff; padding:12px 14px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; border-radius:10px 10px 0 0; }
 .norpumps-filters .np-filter__body{ background:#fff; border:1px solid var(--np-border); border-top:none; padding:12px 14px; border-radius:0 0 10px 10px; }
+.np-filter--price .np-filter__body{ display:flex; flex-direction:column; gap:12px; }
+.np-price-range{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+.np-price-range__field{ flex:1 1 120px; display:flex; flex-direction:column; gap:6px; font-weight:600; color:var(--np-text); }
+.np-price-range__field span{ font-size:12px; letter-spacing:.02em; text-transform:uppercase; color:#5c6a70; }
+.np-price-input{ padding:10px 12px; border:1px solid var(--np-border); border-radius:10px; background:#f9fbfc; font-weight:600; color:var(--np-text); transition:border-color .2s ease, box-shadow .2s ease; }
+.np-price-input:focus{ border-color:var(--np-accent); outline:none; box-shadow:0 0 0 3px rgba(15,91,98,0.18); }
+.np-price-apply{ align-self:flex-start; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 20px; border:none; border-radius:999px; background:var(--np-accent); color:#fff; font-weight:700; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; transition:transform .2s ease, box-shadow .2s ease, background .2s ease; box-shadow:0 10px 24px rgba(15,91,98,0.22); }
+.np-price-apply:hover{ transform:translateY(-1px); box-shadow:0 14px 28px rgba(15,91,98,0.3); background:#0d4f56; }
+.np-price-apply:active{ transform:translateY(0); box-shadow:0 6px 16px rgba(15,91,98,0.2); }
+.np-filter--price .np-filter__body .np-price-range + .np-price-apply{ margin-top:4px; }
 .norpumps-filters .np-checklist label{ display:block; margin:8px 0; color:#111; }
 .norpumps-filters .np-checklist .depth-1{ padding-left:12px; opacity:.95 }
 .norpumps-filters .np-checklist .depth-2{ padding-left:24px; opacity:.9 }
@@ -30,6 +40,9 @@
 .norpumps-admin .np-card{ background:#fff; border:1px solid #e7eef2; border-radius:12px; padding:14px; }
 .norpumps-admin .np-row{ display:flex; gap:12px; align-items:center; margin:10px 0; }
 .norpumps-admin .np-row label{ min-width:260px; font-weight:700; }
+.norpumps-admin .np-inline-fields{ display:flex; align-items:center; gap:10px; }
+.norpumps-admin .np-inline-fields input{ max-width:140px; padding:6px 8px; }
+.norpumps-admin .np-inline-fields .np-sep{ font-weight:700; opacity:.6; }
 .norpumps-admin .np-chip{ display:inline-flex; align-items:center; gap:6px; background:#eef7f8; padding:6px 10px; border-radius:999px; margin-right:8px; }
 .norpumps-admin .np-group{ display:flex; gap:10px; align-items:center; margin:8px 0; }
 .norpumps-admin .np-group input{ padding:6px 8px; }
