@@ -7,3 +7,11 @@ function norpumps_sanitize_csv($csv){
     $parts = array_map('trim', explode(',', $csv));
     return array_filter($parts, fn($v)=>$v!=='');
 }
+function norpumps_trim_number($value){
+    $number = floatval($value);
+    if ($number == floor($number)){
+        return (string)intval($number);
+    }
+    $formatted = number_format($number, 2, '.', '');
+    return rtrim(rtrim($formatted, '0'), '.');
+}

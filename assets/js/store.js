@@ -7,6 +7,13 @@ jQuery(function($){
   };
   const SCROLL_OFFSET = 120;
   const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
+  const isFiniteLike = function(value){
+    const num = parseFloat(value);
+    return !isNaN(num) && isFinite(num);
+  };
+  function nearlyEqual(a, b){
+    return Math.abs(parseFloat(a) - parseFloat(b)) < 0.0001;
+  }
 
   function getDefaultPerPage($root){
     const val = parseInt($root.data('defaultPerPage'), 10);
@@ -38,6 +45,50 @@ jQuery(function($){
     setCurrentPage($root, fallback);
     return fallback;
   }
+  function getDefaultPriceMin($root){
+    const val = parseFloat($root.data('priceMinDefault'));
+    return isFiniteLike(val) && val >= 0 ? val : 0;
+  }
+  function getDefaultPriceMax($root){
+    const min = getDefaultPriceMin($root);
+    const val = parseFloat($root.data('priceMaxDefault'));
+    if (isFiniteLike(val) && val >= min){ return val; }
+    return min;
+  }
+  function formatPrice(value){
+    if (!isFiniteLike(value)) return '';
+    const num = Math.round(parseFloat(value) * 100) / 100;
+    const str = num.toFixed(2);
+    return str.replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+  }
+  function parsePrice(value, fallback){
+    if (isFiniteLike(value)){
+      const num = parseFloat(value);
+      if (num >= 0){ return num; }
+    }
+    return fallback;
+  }
+  function getPriceRange($root){
+    const $min = $root.find('.np-price-min');
+    const $max = $root.find('.np-price-max');
+    if (!$min.length || !$max.length){
+      const defaultMin = getDefaultPriceMin($root);
+      const defaultMax = getDefaultPriceMax($root);
+      return { min: defaultMin, max: defaultMax };
+    }
+    const min = parsePrice($min.val(), getDefaultPriceMin($root));
+    let max = parsePrice($max.val(), getDefaultPriceMax($root));
+    if (max < min){ max = min; }
+    return { min, max };
+  }
+  function normalisePriceInputs($root){
+    const $min = $root.find('.np-price-min');
+    const $max = $root.find('.np-price-max');
+    if (!$min.length || !$max.length) return;
+    const range = getPriceRange($root);
+    $min.val(formatPrice(range.min));
+    $max.val(formatPrice(range.max));
+  }
   function buildQuery($root){
     const data = { action:'norpumps_store_query', nonce:NorpumpsStore.nonce };
     data.per_page = getPerPage($root);
@@ -56,17 +107,26 @@ jQuery(function($){
         data['cat_'+group] = vals.join(',');
       }
     });
+    if ($root.find('.np-price-filter').length){
+      const range = getPriceRange($root);
+      data.min_price = range.min;
+      data.max_price = range.max;
+    }
     return data;
   }
   function toQuery($root, obj){
     const params = new URLSearchParams();
     const defaultPer = getDefaultPerPage($root);
     const defaultPage = getDefaultPage($root);
+    const defaultMin = getDefaultPriceMin($root);
+    const defaultMax = getDefaultPriceMax($root);
     Object.keys(obj).forEach(key => {
       if (['action','nonce'].includes(key)) return;
       if (obj[key] === '' || obj[key] == null) return;
       if (key === 'page' && parseInt(obj[key], 10) === defaultPage) return;
       if (key === 'per_page' && parseInt(obj[key], 10) === defaultPer) return;
+      if (key === 'min_price' && nearlyEqual(obj[key], defaultMin)) return;
+      if (key === 'max_price' && nearlyEqual(obj[key], defaultMax)) return;
       params.set(key, obj[key]);
     });
     return params.toString();
@@ -81,6 +141,7 @@ jQuery(function($){
   function load($root, page, options){
     const opts = $.extend({scroll:false}, options);
     if (typeof page !== 'undefined'){ setCurrentPage($root, page); }
+    normalisePriceInputs($root);
     const payload = buildQuery($root);
     $root.addClass('is-loading');
     $.post(NorpumpsStore.ajax_url, payload, function(resp){
@@ -133,6 +194,19 @@ jQuery(function($){
     bindAllToggle($root);
 
     const url = new URL(window.location.href);
+    const queryMinPrice = parseFloat(url.searchParams.get('min_price'));
+    const queryMaxPrice = parseFloat(url.searchParams.get('max_price'));
+    if ($root.find('.np-price-filter').length){
+      if (isFiniteLike(queryMinPrice)){
+        $root.find('.np-price-min').val(formatPrice(Math.max(0, queryMinPrice)));
+      }
+      if (isFiniteLike(queryMaxPrice)){
+        const minVal = getPriceRange($root).min;
+        const sanitisedMax = Math.max(minVal, queryMaxPrice);
+        $root.find('.np-price-max').val(formatPrice(sanitisedMax));
+      }
+      normalisePriceInputs($root);
+    }
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
       const group = $(this).data('group');
       if (!group) return;
@@ -157,6 +231,21 @@ jQuery(function($){
     if (isFiniteNumber(queryPer) && queryPer > 0){ setPerPage($root, queryPer); }
     const queryPage = parseInt(url.searchParams.get('page'), 10);
     if (isFiniteNumber(queryPage) && queryPage > 0){ setCurrentPage($root, queryPage); }
+
+    $root.on('click', '.np-price-apply', function(e){
+      e.preventDefault();
+      normalisePriceInputs($root);
+      resetToFirstPage($root);
+      load($root, 1, {scroll:true});
+    });
+    $root.on('blur change', '.np-price-input', function(e){
+      if (e.type === 'blur' && $(document.activeElement).is('.np-price-apply')){
+        return;
+      }
+      normalisePriceInputs($root);
+      resetToFirstPage($root);
+      load($root, 1, {scroll:true});
+    });
 
     load($root, getCurrentPage($root), {scroll:false});
   });

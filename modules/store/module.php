@@ -104,6 +104,8 @@ class NorPumps_Modules_Store {
             'groups'=>'', // "Label:slugPadre|Label2:slugPadre2"
             'show_all'=>'yes',
             'per_page'=>12,'order'=>'menu_order title','page'=>1,
+            'price_min'=>0,
+            'price_max'=>10000,
         ], $atts, 'norpumps_store');
         $columns = max(2, min(6, intval($atts['columns'])));
         $per_page = max(1, min(60, intval($atts['per_page'])));
@@ -113,6 +115,16 @@ class NorPumps_Modules_Store {
             if (count($parts)==2){ $label = sanitize_text_field($parts[0]); $slug = sanitize_title($parts[1]); if ($slug) $groups[]=['label'=>$label?:$slug,'slug'=>$slug]; }
         }
         $default_page = max(1, intval($atts['page']));
+        $price_min_default = max(0, floatval($atts['price_min']));
+        $price_max_default = floatval($atts['price_max']);
+        if ($price_max_default < $price_min_default){
+            $price_max_default = $price_min_default;
+        }
+        $requested_price_min = isset($_GET['min_price']) ? max(0, floatval($_GET['min_price'])) : $price_min_default;
+        $requested_price_max = isset($_GET['max_price']) ? floatval($_GET['max_price']) : $price_max_default;
+        if ($requested_price_max < $requested_price_min){
+            $requested_price_max = $requested_price_min;
+        }
         $requested_per_page = max(1, min(60, intval(isset($_GET['per_page']) ? $_GET['per_page'] : $per_page)));
         $requested_page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : $default_page));
         $search_query = sanitize_text_field(norpumps_array_get($_GET,'s',''));
@@ -172,6 +184,15 @@ class NorPumps_Modules_Store {
         }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
         if ($search !== ''){ $args['s'] = $search; }
+        $min_price = norpumps_array_get($_REQUEST,'min_price',null);
+        $max_price = norpumps_array_get($_REQUEST,'max_price',null);
+        if ($min_price !== null || $max_price !== null){
+            $min = max(0, floatval($min_price !== null ? $min_price : 0));
+            $max = floatval($max_price !== null ? $max_price : $min);
+            if ($max < $min){ $max = $min; }
+            $args['min_price'] = $min;
+            $args['max_price'] = $max;
+        }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
         return $args;
     }
