@@ -104,9 +104,21 @@ class NorPumps_Modules_Store {
             'groups'=>'', // "Label:slugPadre|Label2:slugPadre2"
             'show_all'=>'yes',
             'per_page'=>12,'order'=>'menu_order title','page'=>1,
+            'price_min'=>0,
+            'price_max'=>0,
         ], $atts, 'norpumps_store');
         $columns = max(2, min(6, intval($atts['columns'])));
         $per_page = max(1, min(60, intval($atts['per_page'])));
+        $price_min = max(0.0, floatval($atts['price_min']));
+        $price_max = max(0.0, floatval($atts['price_max']));
+        if ($price_max <= 0){
+            $price_max = 0;
+        }
+        if ($price_max && $price_min > $price_max){
+            $tmp = $price_min;
+            $price_min = $price_max;
+            $price_max = $tmp;
+        }
         $groups = [];
         foreach (array_filter(array_map('trim', explode('|',$atts['groups']))) as $chunk){
             $parts = array_map('trim', explode(':',$chunk,2));
@@ -172,6 +184,14 @@ class NorPumps_Modules_Store {
         }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
         if ($search !== ''){ $args['s'] = $search; }
+        $min_price = norpumps_array_get($_REQUEST,'min_price','');
+        $max_price = norpumps_array_get($_REQUEST,'max_price','');
+        if ($min_price !== ''){
+            $args['min_price'] = max(0, floatval($min_price));
+        }
+        if ($max_price !== ''){
+            $args['max_price'] = max(0, floatval($max_price));
+        }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
         return $args;
     }
