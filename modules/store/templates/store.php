@@ -13,7 +13,8 @@ $default_price_max_attr = isset($default_price_max) ? floatval($default_price_ma
 $has_price_filter = in_array('price', $filters_arr, true);
 $has_order_filter = in_array('order', $filters_arr, true);
 $has_cat_filter = in_array('cat', $filters_arr, true) && !empty($groups);
-$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter;
+$has_meta_filters = !empty($meta_filters);
+$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter || $has_meta_filters;
 $filters_element_id = 'np-filters-'.uniqid();
 $order_field_id = 'np-orderby-'.uniqid();
 ?>
@@ -91,6 +92,21 @@ if ($has_any_filter) {
                 }
                 np_render_children_only($parent->term_id,0);
                 ?>
+              </div>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+      <?php if ($has_meta_filters): ?>
+        <?php foreach ($meta_filters as $meta): ?>
+          <div class="np-filter np-filter--meta" data-meta-key="<?php echo esc_attr($meta['key']); ?>">
+            <div class="np-filter__head"><?php echo esc_html(strtoupper($meta['label'])); ?></div>
+            <div class="np-filter__body">
+              <label class="np-all"><input type="checkbox" class="np-all-toggle" checked> <?php esc_html_e('Todos','norpumps'); ?></label>
+              <div class="np-checklist" data-meta-key="<?php echo esc_attr($meta['key']); ?>" data-meta-type="<?php echo esc_attr($meta['type']); ?>">
+                <?php foreach ($meta['options'] as $option): ?>
+                  <label><input type="checkbox" value="<?php echo esc_attr($option['value']); ?>"> <?php echo esc_html($option['label']); ?></label>
+                <?php endforeach; ?>
               </div>
             </div>
           </div>

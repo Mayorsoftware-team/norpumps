@@ -133,6 +133,19 @@ jQuery(function($){
         data['cat_'+group] = vals.join(',');
       }
     });
+    $root.find('.np-checklist[data-meta-key]').each(function(){
+      const metaKey = $(this).data('metaKey');
+      if (!metaKey){ return; }
+      const vals = $(this).find('input:checked').map(function(){ return this.value; }).get();
+      const allOn = $(this).closest('.np-filter__body').find('.np-all-toggle').is(':checked');
+      if (vals.length && !allOn){
+        data['meta_filters['+metaKey+']'] = vals.join(',');
+        const metaType = $(this).data('metaType');
+        if (metaType){
+          data['meta_types['+metaKey+']'] = metaType;
+        }
+      }
+    });
     return data;
   }
   function toQuery($root, obj){
@@ -142,6 +155,7 @@ jQuery(function($){
     Object.keys(obj).forEach(key => {
       if (['action','nonce'].includes(key)) return;
       if (obj[key] === '' || obj[key] == null) return;
+      if (key.indexOf('meta_types[') === 0) return;
       if (key === 'page' && parseInt(obj[key], 10) === defaultPage) return;
       if (key === 'per_page' && parseInt(obj[key], 10) === defaultPer) return;
       params.set(key, obj[key]);
@@ -342,6 +356,19 @@ jQuery(function($){
       if (!group) return;
       const key = 'cat_'+group;
       const values = (url.searchParams.get(key) || '').split(',').filter(Boolean);
+      if (values.length){
+        const $body = $(this).closest('.np-filter__body');
+        $body.find('.np-all-toggle').prop('checked', false);
+        $(this).find('input').each(function(){
+          if (values.includes(this.value)){ this.checked = true; }
+        });
+      }
+    });
+    $root.find('.np-checklist[data-meta-key]').each(function(){
+      const metaKey = $(this).data('metaKey');
+      if (!metaKey) return;
+      const queryKey = 'meta_filters['+metaKey+']';
+      const values = (url.searchParams.get(queryKey) || '').split(',').filter(Boolean);
       if (values.length){
         const $body = $(this).closest('.np-filter__body');
         $body.find('.np-all-toggle').prop('checked', false);
