@@ -34,7 +34,7 @@ if ($has_any_filter) {
   <div class="norpumps-store__layout">
     <aside id="<?php echo esc_attr($filters_element_id); ?>" class="norpumps-filters" aria-live="polite">
       <?php if ($has_any_filter): ?>
-        <button type="button" class="np-filters-close" aria-label="<?php esc_attr_e('Cerrar filtros','norpumps'); ?>">✕</button>
+        <button type="button" class="np-filters-close" aria-label="<?php esc_attr_e('Cerrar filtros','norpumps'); ?>" hidden>✕</button>
       <?php endif; ?>
       <?php if ($has_order_filter): ?>
         <div class="np-filter np-filter--order">

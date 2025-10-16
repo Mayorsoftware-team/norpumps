@@ -221,7 +221,16 @@ jQuery(function($){
         openFilters();
       }
     }
+    function syncCloseButton(){
+      if (!$closeBtn.length){ return; }
+      if (isMobile()){
+        $closeBtn.removeAttr('hidden');
+      } else {
+        $closeBtn.attr('hidden', 'hidden');
+      }
+    }
     function handleMediaChange(){
+      syncCloseButton();
       if (!isMobile()){
         closeFilters();
       }
