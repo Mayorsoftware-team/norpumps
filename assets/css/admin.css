@@ -30,6 +30,8 @@
 .norpumps-admin .np-card{ background:#fff; border:1px solid #e7eef2; border-radius:12px; padding:14px; }
 .norpumps-admin .np-row{ display:flex; gap:12px; align-items:center; margin:10px 0; }
 .norpumps-admin .np-row label{ min-width:260px; font-weight:700; }
+.norpumps-admin .np-price-inputs{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.norpumps-admin .np-price-inputs input{ width:120px; }
 .norpumps-admin .np-chip{ display:inline-flex; align-items:center; gap:6px; background:#eef7f8; padding:6px 10px; border-radius:999px; margin-right:8px; }
 .norpumps-admin .np-group{ display:flex; gap:10px; align-items:center; margin:8px 0; }
 .norpumps-admin .np-group input{ padding:6px 8px; }

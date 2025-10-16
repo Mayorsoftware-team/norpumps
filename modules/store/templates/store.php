@@ -27,6 +27,55 @@ if (!isset($filters_arr)) $filters_arr = [];
 
   <div class="norpumps-store__layout">
     <aside class="norpumps-filters">
+      <?php if (in_array('price', $filters_arr, true)): ?>
+        <?php
+        $currency_symbol = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '$';
+        $currency_code = function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : '';
+        $price_step = isset($price_bounds['step']) ? floatval($price_bounds['step']) : 1;
+        $step_decimals = 0;
+        if (strpos((string)$price_step, '.') !== false){
+            $fraction = rtrim(strrchr((string)$price_step, '.'), '0');
+            $step_decimals = max(0, strlen($fraction) - 1);
+        }
+        $wc_decimals = function_exists('wc_get_price_decimals') ? intval(wc_get_price_decimals()) : 0;
+        $price_decimals = max($step_decimals, $wc_decimals);
+        $min_price_value = isset($price_bounds['min']) ? floatval($price_bounds['min']) : 0;
+        $max_price_value = isset($price_bounds['max']) ? floatval($price_bounds['max']) : 0;
+        $current_min_value = isset($price_bounds['current_min']) ? floatval($price_bounds['current_min']) : $min_price_value;
+        $current_max_value = isset($price_bounds['current_max']) ? floatval($price_bounds['current_max']) : $max_price_value;
+        ?>
+        <div class="np-filter np-filter--price" data-filter="price">
+          <div class="np-filter__head"><?php esc_html_e('Precio','norpumps'); ?></div>
+          <div class="np-filter__body">
+            <div class="np-price-range"
+              data-min="<?php echo esc_attr($min_price_value); ?>"
+              data-max="<?php echo esc_attr($max_price_value); ?>"
+              data-current-min="<?php echo esc_attr($current_min_value); ?>"
+              data-current-max="<?php echo esc_attr($current_max_value); ?>"
+              data-step="<?php echo esc_attr($price_step); ?>"
+              data-currency="<?php echo esc_attr($currency_symbol); ?>"
+              data-currency-code="<?php echo esc_attr($currency_code); ?>"
+              data-decimals="<?php echo esc_attr($price_decimals); ?>"
+              data-locale="<?php echo esc_attr(get_locale()); ?>">
+              <div class="np-price-range__values">
+                <span class="np-price-range__pill">
+                  <span class="np-price-range__label"><?php esc_html_e('Mínimo','norpumps'); ?></span>
+                  <span class="np-price-range__value js-np-price-min-label"></span>
+                </span>
+                <span class="np-price-range__pill">
+                  <span class="np-price-range__label"><?php esc_html_e('Máximo','norpumps'); ?></span>
+                  <span class="np-price-range__value js-np-price-max-label"></span>
+                </span>
+              </div>
+              <div class="np-price-range__track" role="presentation">
+                <div class="np-price-range__progress"></div>
+                <button type="button" class="np-price-range__thumb np-price-range__thumb--min" role="slider" aria-label="<?php esc_attr_e('Precio mínimo','norpumps'); ?>" tabindex="0"></button>
+                <button type="button" class="np-price-range__thumb np-price-range__thumb--max" role="slider" aria-label="<?php esc_attr_e('Precio máximo','norpumps'); ?>" tabindex="0"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
       <?php if (in_array('cat',$filters_arr) && !empty($groups)): ?>
         <?php foreach ($groups as $g):
           $parent = get_term_by('slug', $g['slug'], 'product_cat');
