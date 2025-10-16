@@ -155,11 +155,19 @@ jQuery(function($){
     const top = Math.max((offset.top || 0) - SCROLL_OFFSET, 0);
     $('html, body').animate({scrollTop: top}, 250);
   }
+  function closeMobileFilters($root){
+    const closer = $root.data('npCloseFilters');
+    if (typeof closer === 'function'){
+      closer();
+    }
+  }
+
   function load($root, page, options){
     const opts = $.extend({scroll:false}, options);
     if (typeof page !== 'undefined'){ setCurrentPage($root, page); }
     const payload = buildQuery($root);
     $root.addClass('is-loading');
+    closeMobileFilters($root);
     $.post(NorpumpsStore.ajax_url, payload, function(resp){
       if (!resp || !resp.success) return;
       $root.find('.js-np-grid').html(resp.data.html);
@@ -175,6 +183,81 @@ jQuery(function($){
     });
   }
   function resetToFirstPage($root){ setCurrentPage($root, 1); }
+  function setupMobileFilters($root){
+    const $trigger = $root.find('.np-filters-trigger');
+    const $filters = $root.find('.norpumps-filters');
+    const $backdrop = $root.find('.np-filters-backdrop');
+    if (!$trigger.length || !$filters.length){ return; }
+    const $closeBtn = $filters.find('.np-filters-close');
+    const instanceId = Math.random().toString(36).slice(2);
+    const mediaQuery = window.matchMedia ? window.matchMedia('(max-width: 1024px)') : null;
+    function isMobile(){
+      if (!mediaQuery){ return window.innerWidth <= 1024; }
+      return mediaQuery.matches;
+    }
+    function closeFilters(){
+      $root.removeClass('np-filters-open');
+      $trigger.attr('aria-expanded', 'false');
+      if ($backdrop.length){
+        $backdrop.attr('aria-hidden', 'true');
+      }
+      if (!$('.norpumps-store.np-filters-open').not($root).length){
+        $('body').removeClass('np-filters-modal-open');
+      }
+    }
+    function openFilters(){
+      if (!isMobile()){ return; }
+      $root.addClass('np-filters-open');
+      $('body').addClass('np-filters-modal-open');
+      $trigger.attr('aria-expanded', 'true');
+      if ($backdrop.length){
+        $backdrop.attr('aria-hidden', 'false');
+      }
+    }
+    function toggleFilters(){
+      if ($root.hasClass('np-filters-open')){
+        closeFilters();
+      } else {
+        openFilters();
+      }
+    }
+    function handleMediaChange(){
+      if (!isMobile()){
+        closeFilters();
+      }
+    }
+    $root.data('npCloseFilters', closeFilters);
+    $trigger.on('click', function(e){
+      e.preventDefault();
+      toggleFilters();
+    });
+    if ($backdrop.length){
+      $backdrop.on('click', function(e){
+        e.preventDefault();
+        closeFilters();
+      });
+    }
+    if ($closeBtn.length){
+      $closeBtn.on('click', function(e){
+        e.preventDefault();
+        closeFilters();
+      });
+    }
+    $(document).on('keyup.npFilters'+instanceId, function(e){
+      if (e.key === 'Escape' || e.keyCode === 27){
+        closeFilters();
+      }
+    });
+    if (mediaQuery){
+      if (typeof mediaQuery.addEventListener === 'function'){
+        mediaQuery.addEventListener('change', handleMediaChange);
+      } else if (typeof mediaQuery.addListener === 'function'){
+        mediaQuery.addListener(handleMediaChange);
+      }
+    }
+    handleMediaChange();
+    $trigger.attr('aria-expanded', 'false');
+  }
   function bindAllToggle($root){
     $root.on('change', '.np-all-toggle', function(){
       const $body = $(this).closest('.np-filter__body');
@@ -236,6 +319,7 @@ jQuery(function($){
 
     bindAllToggle($root);
     bindPriceFilter($root);
+    setupMobileFilters($root);
 
     const url = new URL(window.location.href);
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){

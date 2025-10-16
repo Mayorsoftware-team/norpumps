@@ -12,11 +12,30 @@ $default_price_min_attr = isset($default_price_min) ? floatval($default_price_mi
 $default_price_max_attr = isset($default_price_max) ? floatval($default_price_max) : $current_price_max;
 $has_price_filter = in_array('price', $filters_arr, true);
 $has_order_filter = in_array('order', $filters_arr, true);
+$has_cat_filter = in_array('cat', $filters_arr, true) && !empty($groups);
+$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter;
+$filters_element_id = 'np-filters-'.uniqid();
 $order_field_id = 'np-orderby-'.uniqid();
 ?>
-<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-price-min="<?php echo esc_attr(number_format($current_price_min, 2, '.', '')); ?>" data-price-max="<?php echo esc_attr(number_format($current_price_max, 2, '.', '')); ?>" data-default-price-min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" data-default-price-max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>">
+<?php
+$store_classes = ['norpumps-store'];
+if ($has_any_filter) {
+    $store_classes[] = 'has-mobile-filters';
+}
+?>
+<div class="<?php echo esc_attr(implode(' ', $store_classes)); ?>" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-price-min="<?php echo esc_attr(number_format($current_price_min, 2, '.', '')); ?>" data-price-max="<?php echo esc_attr(number_format($current_price_max, 2, '.', '')); ?>" data-default-price-min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" data-default-price-max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>">
+  <?php if ($has_any_filter): ?>
+    <button type="button" class="np-filters-trigger" aria-controls="<?php echo esc_attr($filters_element_id); ?>" aria-expanded="false">
+      <span class="np-filters-trigger__icon" aria-hidden="true">✨</span>
+      <span class="np-filters-trigger__label"><?php esc_html_e('Filtros','norpumps'); ?></span>
+    </button>
+    <div class="np-filters-backdrop" aria-hidden="true"></div>
+  <?php endif; ?>
   <div class="norpumps-store__layout">
-    <aside class="norpumps-filters">
+    <aside id="<?php echo esc_attr($filters_element_id); ?>" class="norpumps-filters" aria-live="polite">
+      <?php if ($has_any_filter): ?>
+        <button type="button" class="np-filters-close" aria-label="<?php esc_attr_e('Cerrar filtros','norpumps'); ?>">✕</button>
+      <?php endif; ?>
       <?php if ($has_order_filter): ?>
         <div class="np-filter np-filter--order">
           <div class="np-filter__head"><?php esc_html_e('Ordenar','norpumps'); ?></div>
@@ -48,7 +67,7 @@ $order_field_id = 'np-orderby-'.uniqid();
           </div>
         </div>
       <?php endif; ?>
-      <?php if (in_array('cat',$filters_arr) && !empty($groups)): ?>
+      <?php if ($has_cat_filter): ?>
         <?php foreach ($groups as $g):
           $parent = get_term_by('slug', $g['slug'], 'product_cat');
           if (!$parent) continue; ?>
