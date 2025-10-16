@@ -50,10 +50,40 @@ jQuery(function($){
       load($root);
     });
   }
+  function bindPriceSlider($root){
+    let pending = false;
+    let suppressChange = false;
+    let suppressTimer = null;
+    const endEvents = 'mouseup touchend pointerup';
+    $root
+      .on('input', '.np-price__slider input[type=range]', function(){
+        pending = true;
+        syncPriceUI($root);
+      })
+      .on(endEvents, '.np-price__slider input[type=range]', function(){
+        if (!pending) return;
+        suppressChange = true;
+        if (suppressTimer) clearTimeout(suppressTimer);
+        suppressTimer = setTimeout(function(){ suppressChange = false; suppressTimer = null; }, 150);
+        pending = false;
+        load($root);
+      })
+      .on('change', '.np-price__slider input[type=range]', function(){
+        syncPriceUI($root);
+        if (suppressChange){
+          suppressChange = false;
+          if (suppressTimer) clearTimeout(suppressTimer);
+          suppressTimer = null;
+          return;
+        }
+        pending = false;
+        load($root);
+      });
+  }
   $('.norpumps-store').each(function(){
     const $root = $(this);
     $root.on('change', '.np-orderby select', function(){ load($root); });
-    $root.on('input change', '.np-price__slider input[type=range]', function(){ syncPriceUI($root); }).on('change', '.np-price__slider input[type=range]', function(){ load($root); });
+    bindPriceSlider($root);
     $root.on('keyup', '.np-search', function(e){ if (e.keyCode===13) load($root); });
     bindAllToggle($root);
     const url = new URL(window.location.href);
