@@ -7,6 +7,258 @@ jQuery(function($){
   };
   const SCROLL_OFFSET = 120;
   const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
+  const clamp = function(value, min, max){
+    if (!isFiniteNumber(min) || !isFiniteNumber(max)) return value;
+    return Math.min(Math.max(value, min), max);
+  };
+  const KEYBOARD_PRICE_KEYS = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'];
+
+  function getPriceRangeApi($root){
+    const $component = $root.find('.np-price-range');
+    if (!$component.length) return null;
+    return $component.data('priceRangeApi') || null;
+  }
+
+  function initPriceRange($root){
+    const $components = $root.find('.np-price-range');
+    if (!$components.length) return;
+
+    $components.each(function(){
+      const $component = $(this);
+      const readNumber = function(key, fallback){
+        const raw = $component.data(key);
+        const value = typeof raw === 'string' ? parseFloat(raw.replace(',', '.')) : parseFloat(raw);
+        return isFiniteNumber(value) ? value : fallback;
+      };
+      const state = {
+        min: readNumber('min', 0),
+        max: readNumber('max', 100),
+        step: Math.max(readNumber('step', 1), 0.0001),
+        decimals: Math.max(0, parseInt($component.data('decimals'), 10) || 0),
+        symbol: ($component.data('symbol') || '$').toString(),
+        locale: ($component.data('locale') || '').toString() || undefined,
+        currentMin: readNumber('currentMin', readNumber('min', 0)),
+        currentMax: readNumber('currentMax', readNumber('max', 100)),
+        keyboardChanged: false,
+      };
+      if (state.max <= state.min){
+        state.max = state.min + state.step;
+      }
+      state.currentMin = clamp(state.currentMin, state.min, state.max);
+      state.currentMax = clamp(state.currentMax, state.min, state.max);
+      if (state.currentMin > state.currentMax){
+        const midpoint = (state.currentMin + state.currentMax) / 2;
+        state.currentMin = midpoint;
+        state.currentMax = midpoint;
+      }
+      const $track = $component.find('.np-price-range__track');
+      const $progress = $component.find('.np-price-range__progress');
+      const $thumbMin = $component.find('.np-price-range__thumb.is-min');
+      const $thumbMax = $component.find('.np-price-range__thumb.is-max');
+      const $labelMin = $component.find('.js-np-price-min-label');
+      const $labelMax = $component.find('.js-np-price-max-label');
+
+      const formatFallback = function(value){
+        const fixed = Number(value).toFixed(state.decimals);
+        const parts = fixed.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        if (state.decimals > 0){
+          const decimals = (parts[1] || '').padEnd(state.decimals, '0');
+          return state.symbol + parts[0] + ',' + decimals;
+        }
+        return state.symbol + parts[0];
+      };
+      const formatValue = function(value){
+        try {
+          return state.symbol + Number(value).toLocaleString(state.locale || undefined, {
+            minimumFractionDigits: state.decimals,
+            maximumFractionDigits: state.decimals,
+          });
+        } catch (err){
+          return formatFallback(value);
+        }
+      };
+      const snap = function(value){
+        const snapped = state.min + Math.round((value - state.min) / state.step) * state.step;
+        return parseFloat(snapped.toFixed(state.decimals));
+      };
+      const setHandleValue = function(handle, value){
+        const snapped = snap(clamp(value, state.min, state.max));
+        if (handle === 'min'){
+          const finalValue = Math.min(snapped, state.currentMax);
+          if (finalValue !== state.currentMin){
+            state.currentMin = finalValue;
+            return true;
+          }
+        } else {
+          const finalValue = Math.max(snapped, state.currentMin);
+          if (finalValue !== state.currentMax){
+            state.currentMax = finalValue;
+            return true;
+          }
+        }
+        return false;
+      };
+      const setRangeValues = function(minValue, maxValue){
+        let changed = false;
+        changed = setHandleValue('min', minValue) || changed;
+        changed = setHandleValue('max', maxValue) || changed;
+        if (state.currentMin > state.currentMax){
+          const midpoint = (state.currentMin + state.currentMax) / 2;
+          state.currentMin = midpoint;
+          state.currentMax = midpoint;
+          changed = true;
+        }
+        return changed;
+      };
+      const updateUI = function(){
+        const range = state.max - state.min;
+        const minPercent = range <= 0 ? 0 : ((state.currentMin - state.min) / range) * 100;
+        const maxPercent = range <= 0 ? 100 : ((state.currentMax - state.min) / range) * 100;
+        const trackWidth = Math.max(maxPercent - minPercent, 0);
+        $progress.css({ left: minPercent + '%', width: trackWidth + '%' });
+        $thumbMin.css('left', minPercent + '%');
+        $thumbMax.css('left', maxPercent + '%');
+        $labelMin.text(formatValue(state.currentMin));
+        $labelMax.text(formatValue(state.currentMax));
+        const ariaMin = state.currentMin.toFixed(state.decimals);
+        const ariaMax = state.currentMax.toFixed(state.decimals);
+        $thumbMin.attr({
+          'aria-valuenow': ariaMin,
+          'aria-valuetext': formatValue(state.currentMin),
+          'aria-valuemin': state.min.toFixed(state.decimals),
+          'aria-valuemax': state.currentMax.toFixed(state.decimals),
+        });
+        $thumbMax.attr({
+          'aria-valuenow': ariaMax,
+          'aria-valuetext': formatValue(state.currentMax),
+          'aria-valuemin': state.currentMin.toFixed(state.decimals),
+          'aria-valuemax': state.max.toFixed(state.decimals),
+        });
+        $component.data('currentMin', state.currentMin);
+        $component.data('currentMax', state.currentMax);
+        $component.data('defaultMin', state.min);
+        $component.data('defaultMax', state.max);
+      };
+      const pointerToValue = function(clientX){
+        const rect = $track[0].getBoundingClientRect();
+        if (!rect.width){ return state.min; }
+        const ratio = clamp((clientX - rect.left) / rect.width, 0, 1);
+        return state.min + ratio * (state.max - state.min);
+      };
+      const startDrag = function(handle, event, options){
+        const namespace = '.npPriceRange' + Math.random().toString(16).slice(2);
+        const initialMin = state.currentMin;
+        const initialMax = state.currentMax;
+        state.keyboardChanged = false;
+        $component.addClass('is-dragging');
+        if (options && options.jump){
+          setHandleValue(handle, pointerToValue(event.clientX));
+          updateUI();
+        }
+        const move = function(ev){
+          if (ev.preventDefault){ ev.preventDefault(); }
+          const changed = setHandleValue(handle, pointerToValue(ev.clientX));
+          if (changed){ updateUI(); }
+        };
+        const end = function(){
+          $(document).off('pointermove' + namespace).off('pointerup' + namespace).off('pointercancel' + namespace);
+          $component.removeClass('is-dragging');
+          if (initialMin !== state.currentMin || initialMax !== state.currentMax){
+            $component.trigger('npPriceRange:change');
+          }
+        };
+        $(document).on('pointermove' + namespace, move);
+        $(document).on('pointerup' + namespace + ' pointercancel' + namespace, end);
+      };
+      const handleKeyDown = function(handle, event){
+        let changed = false;
+        const step = state.step;
+        const bigStep = state.step * 10;
+        switch (event.key){
+          case 'ArrowLeft':
+          case 'ArrowDown':
+            changed = setHandleValue(handle, (handle === 'min' ? state.currentMin : state.currentMax) - step);
+            break;
+          case 'ArrowRight':
+          case 'ArrowUp':
+            changed = setHandleValue(handle, (handle === 'min' ? state.currentMin : state.currentMax) + step);
+            break;
+          case 'PageDown':
+            changed = setHandleValue(handle, (handle === 'min' ? state.currentMin : state.currentMax) - bigStep);
+            break;
+          case 'PageUp':
+            changed = setHandleValue(handle, (handle === 'min' ? state.currentMin : state.currentMax) + bigStep);
+            break;
+          case 'Home':
+            if (handle === 'min'){ changed = setHandleValue(handle, state.min); }
+            if (handle === 'max'){ changed = setHandleValue(handle, state.currentMin); }
+            break;
+          case 'End':
+            if (handle === 'max'){ changed = setHandleValue(handle, state.max); }
+            if (handle === 'min'){ changed = setHandleValue(handle, state.currentMax); }
+            break;
+          default:
+            break;
+        }
+        if (changed){
+          event.preventDefault();
+          state.keyboardChanged = true;
+          updateUI();
+        }
+      };
+      const handleKeyUp = function(event){
+        if (KEYBOARD_PRICE_KEYS.indexOf(event.key) !== -1 && state.keyboardChanged){
+          state.keyboardChanged = false;
+          $component.trigger('npPriceRange:change');
+        }
+      };
+
+      $thumbMin.on('pointerdown', function(ev){
+        ev.preventDefault();
+        if (typeof this.focus === 'function'){ this.focus(); }
+        startDrag('min', ev);
+      });
+      $thumbMax.on('pointerdown', function(ev){
+        ev.preventDefault();
+        if (typeof this.focus === 'function'){ this.focus(); }
+        startDrag('max', ev);
+      });
+      $track.on('pointerdown', function(ev){
+        if ($(ev.target).is('.np-price-range__thumb')) return;
+        ev.preventDefault();
+        const value = pointerToValue(ev.clientX);
+        const distanceToMin = Math.abs(value - state.currentMin);
+        const distanceToMax = Math.abs(value - state.currentMax);
+        const handle = distanceToMin <= distanceToMax ? 'min' : 'max';
+        if (handle === 'min'){
+          if ($thumbMin.length && typeof $thumbMin[0].focus === 'function'){ $thumbMin[0].focus(); }
+        } else {
+          if ($thumbMax.length && typeof $thumbMax[0].focus === 'function'){ $thumbMax[0].focus(); }
+        }
+        startDrag(handle, ev, { jump: true });
+      });
+      $thumbMin.on('keydown', function(ev){ handleKeyDown('min', ev); });
+      $thumbMax.on('keydown', function(ev){ handleKeyDown('max', ev); });
+      $thumbMin.on('keyup', handleKeyUp);
+      $thumbMax.on('keyup', handleKeyUp);
+
+      const api = {
+        getValues: function(){ return { min: state.currentMin, max: state.currentMax }; },
+        getDefaults: function(){ return { min: state.min, max: state.max, decimals: state.decimals }; },
+        setValues: function(minValue, maxValue, options){
+          const changed = setRangeValues(minValue, maxValue);
+          if (changed || (options && options.force)){ updateUI(); }
+          if (changed && options && options.emit){ $component.trigger('npPriceRange:change'); }
+          return changed;
+        },
+        getDecimals: function(){ return state.decimals; },
+        format: formatValue,
+      };
+      $component.data('priceRangeApi', api);
+      updateUI();
+    });
+  }
 
   function getDefaultPerPage($root){
     const val = parseInt($root.data('defaultPerPage'), 10);
@@ -56,6 +308,18 @@ jQuery(function($){
         data['cat_'+group] = vals.join(',');
       }
     });
+    const priceApi = getPriceRangeApi($root);
+    if (priceApi){
+      const values = priceApi.getValues();
+      const defaults = priceApi.getDefaults();
+      const decimals = priceApi.getDecimals ? priceApi.getDecimals() : 0;
+      if (values.min > defaults.min){
+        data.min_price = decimals > 0 ? Number(values.min).toFixed(decimals) : String(Math.round(values.min));
+      }
+      if (values.max < defaults.max){
+        data.max_price = decimals > 0 ? Number(values.max).toFixed(decimals) : String(Math.round(values.max));
+      }
+    }
     return data;
   }
   function toQuery($root, obj){
@@ -119,6 +383,7 @@ jQuery(function($){
     const $root = $(this);
     setPerPage($root, getPerPage($root));
     setCurrentPage($root, getCurrentPage($root));
+    initPriceRange($root);
 
     $root.on('change', '.np-orderby select', function(){ resetToFirstPage($root); load($root, 1, {scroll:true}); });
     $root.on('keyup', '.np-search', function(e){ if (e.keyCode === 13){ resetToFirstPage($root); load($root, 1, {scroll:true}); } });
@@ -131,6 +396,10 @@ jQuery(function($){
     });
 
     bindAllToggle($root);
+    $root.on('npPriceRange:change', '.np-price-range', function(){
+      resetToFirstPage($root);
+      load($root, 1, {scroll:true});
+    });
 
     const url = new URL(window.location.href);
 
