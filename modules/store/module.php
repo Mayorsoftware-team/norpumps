@@ -34,6 +34,10 @@ class NorPumps_Modules_Store {
                     <label class="np-chip"><input type="checkbox" id="f_cat" checked> <?php esc_html_e('Secciones de categorías','norpumps');?></label>
                     <label class="np-chip"><input type="checkbox" id="f_price" checked> <?php esc_html_e('Rango de precios','norpumps');?></label>
                     <label class="np-chip"><input type="checkbox" id="f_order" checked> <?php esc_html_e('Ordenar productos','norpumps');?></label>
+                    <label class="np-chip"><input type="checkbox" id="f_amps"> <?php esc_html_e('Intensidad (A)','norpumps');?></label>
+                    <label class="np-chip"><input type="checkbox" id="f_kw"> <?php esc_html_e('Potencia motor (kW)','norpumps');?></label>
+                    <label class="np-chip"><input type="checkbox" id="f_hp"> <?php esc_html_e('Potencia motor (HP)','norpumps');?></label>
+                    <label class="np-chip"><input type="checkbox" id="f_voltage"> <?php esc_html_e('Tensión nominal (V)','norpumps');?></label>
                 </div>
                 <div class="np-row">
                     <label><?php esc_html_e('Rango de precios','norpumps'); ?></label>
@@ -42,6 +46,26 @@ class NorPumps_Modules_Store {
                         <span class="np-sep">&mdash;</span>
                         <input type="number" id="np_price_max" value="10000" min="0" step="0.01">
                     </div>
+                </div>
+                <div class="np-row">
+                    <label><?php esc_html_e('Rangos intensidad (A)','norpumps'); ?></label>
+                    <input type="text" id="np_amps_bins" value="0-5|5-10|10-15|15-30" class="regular-text">
+                    <p class="help"><?php esc_html_e('Formato: mínimo-máximo separados por “|” (ej.: 0-5|5-10|10-15|15-30)','norpumps'); ?></p>
+                </div>
+                <div class="np-row">
+                    <label><?php esc_html_e('Rangos potencia (kW)','norpumps'); ?></label>
+                    <input type="text" id="np_kw_bins" value="0-1.5|1.5-3|3-5|5-8|8-15" class="regular-text">
+                    <p class="help"><?php esc_html_e('Formato: mínimo-máximo separados por “|” (ej.: 0-1.5|1.5-3|3-5|5-8|8-15)','norpumps'); ?></p>
+                </div>
+                <div class="np-row">
+                    <label><?php esc_html_e('Rangos potencia (HP)','norpumps'); ?></label>
+                    <input type="text" id="np_hp_bins" value="0-3|3-5|5-8|8-15|15-25" class="regular-text">
+                    <p class="help"><?php esc_html_e('Formato: mínimo-máximo separados por “|” (ej.: 0-3|3-5|5-8|8-15|15-25)','norpumps'); ?></p>
+                </div>
+                <div class="np-row">
+                    <label><?php esc_html_e('Rangos tensión (V)','norpumps'); ?></label>
+                    <input type="text" id="np_voltage_bins" value="110-127|200-240|380-400|400-460" class="regular-text">
+                    <p class="help"><?php esc_html_e('Formato: mínimo-máximo separados por “|” (ej.: 110-127|200-240|380-400|400-460)','norpumps'); ?></p>
                 </div>
                 <div class="np-row">
                     <label><?php esc_html_e('Secciones (elige categoría padre)','norpumps'); ?></label>
@@ -57,6 +81,9 @@ class NorPumps_Modules_Store {
         jQuery(function($){
             const $groups = $('#np_groups'); let idx=0;
             const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
+            function sanitizeAttrValue(value){
+                return String(value || '').replace(/"/g,'\\"');
+            }
             function addGroup(label='', slug=''){
                 const i = idx++;
                 const html = `<div class="np-group" data-i="${i}">
@@ -75,23 +102,36 @@ class NorPumps_Modules_Store {
                 if ($('#f_order').is(':checked')) filters.push('order');
                 if ($('#f_price').is(':checked')) filters.push('price');
                 if ($('#f_cat').is(':checked')) filters.push('cat');
+                if ($('#f_amps').is(':checked')) filters.push('amps');
+                if ($('#f_kw').is(':checked')) filters.push('kw');
+                if ($('#f_hp').is(':checked')) filters.push('hp');
+                if ($('#f_voltage').is(':checked')) filters.push('voltage');
                 const rawPriceMin = parseFloat($('#np_price_min').val());
                 const rawPriceMax = parseFloat($('#np_price_max').val());
                 const priceMin = isFiniteNumber(rawPriceMin) && rawPriceMin >= 0 ? rawPriceMin : 0;
                 const priceMax = isFiniteNumber(rawPriceMax) && rawPriceMax >= priceMin ? rawPriceMax : priceMin;
+                const ampsBins = String($('#np_amps_bins').val()||'').trim();
+                const kwBins = String($('#np_kw_bins').val()||'').trim();
+                const hpBins = String($('#np_hp_bins').val()||'').trim();
+                const voltageBins = String($('#np_voltage_bins').val()||'').trim();
                 const groups = [];
                 $groups.find('.np-group').each(function(){
-                    const label = $(this).find('.np-group-label').val().replace(/"/g,'\\"');
+                    const label = sanitizeAttrValue($(this).find('.np-group-label').val());
                     const slug = $(this).find('.np-group-slug').val();
                     if (slug) groups.push(label+':'+slug);
                 });
                 let shortcode = '[norpumps_store columns="'+cols+'" per_page="'+perPage+'" page="'+page+'" filters="'+filters.join(',')+'" groups="'+groups.join('|')+'" show_all="yes"';
                 shortcode += ' price_min="'+priceMin+'" price_max="'+priceMax+'"';
+                if (ampsBins){ shortcode += ' amps_bins="'+sanitizeAttrValue(ampsBins)+'"'; }
+                if (kwBins){ shortcode += ' kw_bins="'+sanitizeAttrValue(kwBins)+'"'; }
+                if (hpBins){ shortcode += ' hp_bins="'+sanitizeAttrValue(hpBins)+'"'; }
+                if (voltageBins){ shortcode += ' voltage_bins="'+sanitizeAttrValue(voltageBins)+'"'; }
                 shortcode += ']';
                 $('#np_shortcode').text(shortcode);
             }
             $('#np_add_group').on('click', function(){ addGroup(); });
-            $(document).on('input change', '#np_cols, #np_per_page, #np_page, #f_cat, #f_price, #np_price_min, #np_price_max, .np-group input', updateShortcode);
+            const watchSelectors = '#np_cols, #np_per_page, #np_page, #f_cat, #f_price, #f_order, #f_amps, #f_kw, #f_hp, #f_voltage, #np_price_min, #np_price_max, #np_amps_bins, #np_kw_bins, #np_hp_bins, #np_voltage_bins, .np-group input';
+            $(document).on('input change', watchSelectors, updateShortcode);
             $(document).on('click', '.np-del', function(){ $(this).closest('.np-group').remove(); updateShortcode(); });
             $(document).on('click', '.np-search-cat', function(){
                 const $row = $(this).closest('.np-group'); const q = $row.find('.np-group-slug').val();
@@ -127,6 +167,10 @@ class NorPumps_Modules_Store {
             'per_page'=>12,'order'=>'menu_order title','page'=>1,
             'price_min'=>0,
             'price_max'=>10000,
+            'amps_bins'=>'0-5|5-10|10-15|15-30',
+            'kw_bins'=>'0-1.5|1.5-3|3-5|5-8|8-15',
+            'hp_bins'=>'0-3|3-5|5-8|8-15|15-25',
+            'voltage_bins'=>'110-127|200-240|380-400|400-460',
         ], $atts, 'norpumps_store');
         $columns = max(2, min(6, intval($atts['columns'])));
         $per_page = max(1, min(60, intval($atts['per_page'])));
@@ -163,6 +207,7 @@ class NorPumps_Modules_Store {
         wp_enqueue_style('woocommerce-general');
         ob_start();
         $filters_arr = array_filter(array_map('trim', explode(',', $atts['filters'])));
+        $technical_filters = $this->build_technical_filters($atts, $filters_arr);
         include __DIR__.'/templates/store.php';
         return ob_get_clean();
     }
@@ -259,6 +304,32 @@ class NorPumps_Modules_Store {
                 ];
             }
         }
+        foreach ($this->get_range_filter_definitions() as $slug=>$definition){
+            $raw = norpumps_array_get($_REQUEST, $slug, '');
+            if ($raw === '' || $raw === null){
+                continue;
+            }
+            $raw = sanitize_text_field(wp_unslash($raw));
+            if ($raw === ''){
+                continue;
+            }
+            $selected_ranges = $this->parse_selected_ranges($raw);
+            if (empty($selected_ranges)){
+                continue;
+            }
+            $group = ['relation'=>'OR'];
+            foreach ($selected_ranges as $range){
+                $group[] = [
+                    'key'=>$definition['meta_key'],
+                    'value'=>[$range['min'], $range['max']],
+                    'compare'=>'BETWEEN',
+                    'type'=>$definition['meta_type'],
+                ];
+            }
+            if (count($group) > 1){
+                $meta_query[] = $group;
+            }
+        }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
         if ($search !== ''){ $args['s'] = $search; }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
@@ -343,5 +414,181 @@ class NorPumps_Modules_Store {
         );
         $html .= '</ul></nav>';
         return $html;
+    }
+
+    private function get_range_filter_definitions(){
+        return [
+            'amps'=>[
+                'slug'=>'amps',
+                'title'=>__('INTENSIDAD (A)', 'norpumps'),
+                'meta_key'=>'_np_intensidad',
+                'meta_type'=>'DECIMAL(20,4)',
+                'default_bins'=>'0-5|5-10|10-15|15-30',
+                'unit'=>'A',
+            ],
+            'kw'=>[
+                'slug'=>'kw',
+                'title'=>__('POTENCIA (kW)', 'norpumps'),
+                'meta_key'=>'_np_potencia_kw',
+                'meta_type'=>'DECIMAL(20,4)',
+                'default_bins'=>'0-1.5|1.5-3|3-5|5-8|8-15',
+                'unit'=>'kW',
+            ],
+            'hp'=>[
+                'slug'=>'hp',
+                'title'=>__('POTENCIA (HP)', 'norpumps'),
+                'meta_key'=>'_np_potencia_hp',
+                'meta_type'=>'DECIMAL(20,4)',
+                'default_bins'=>'0-3|3-5|5-8|8-15|15-25',
+                'unit'=>'HP',
+            ],
+            'voltage'=>[
+                'slug'=>'voltage',
+                'title'=>__('TENSIÓN (V)', 'norpumps'),
+                'meta_key'=>'_np_tension_v',
+                'meta_type'=>'DECIMAL(20,4)',
+                'default_bins'=>'110-127|200-240|380-400|400-460',
+                'unit'=>'V',
+            ],
+        ];
+    }
+
+    private function build_technical_filters($atts, array $filters_arr){
+        $definitions = $this->get_range_filter_definitions();
+        $filters = [];
+        foreach ($definitions as $slug=>$definition){
+            if (!in_array($slug, $filters_arr, true)){
+                continue;
+            }
+            $attr_key = $slug.'_bins';
+            $raw_bins = $definition['default_bins'];
+            if (isset($atts[$attr_key])){
+                $candidate = wp_unslash($atts[$attr_key]);
+                if ($candidate !== ''){
+                    $raw_bins = $candidate;
+                }
+            }
+            $selected_values = $this->get_selected_range_values($slug);
+            $bins = $this->parse_range_bins($raw_bins, $definition['unit'], $selected_values);
+            if (empty($bins)){
+                $bins = $this->parse_range_bins($definition['default_bins'], $definition['unit'], $selected_values);
+            }
+            if (empty($bins)){
+                continue;
+            }
+            $filters[] = [
+                'slug'=>$slug,
+                'title'=>$definition['title'],
+                'bins'=>$bins,
+            ];
+        }
+        return $filters;
+    }
+
+    private function parse_range_bins($raw, $unit = '', array $selected_values = []){
+        $chunks = array_filter(array_map('trim', explode('|', (string)$raw)));
+        $bins = [];
+        foreach ($chunks as $chunk){
+            if (!preg_match('/^(-?[\d.,]+)\s*-\s*(-?[\d.,]+)$/', $chunk, $matches)){
+                continue;
+            }
+            $min = $this->normalize_decimal($matches[1]);
+            $max = $this->normalize_decimal($matches[2]);
+            if ($min === null || $max === null){
+                continue;
+            }
+            if ($max < $min){
+                $tmp = $min;
+                $min = $max;
+                $max = $tmp;
+            }
+            $value = $this->format_range_value($min, $max);
+            $label = sprintf('%s – %s', $this->format_range_number($min), $this->format_range_number($max));
+            if ($unit){
+                $label .= ' '.$unit;
+            }
+            $bins[] = [
+                'value'=>$value,
+                'label'=>$label,
+                'min'=>$this->format_range_attr($min),
+                'max'=>$this->format_range_attr($max),
+                'checked'=>in_array($value, $selected_values, true),
+            ];
+        }
+        return $bins;
+    }
+
+    private function get_selected_range_values($slug){
+        if (!isset($_GET[$slug])){
+            return [];
+        }
+        $raw = sanitize_text_field(wp_unslash($_GET[$slug]));
+        if ($raw === ''){
+            return [];
+        }
+        $ranges = $this->parse_selected_ranges($raw);
+        if (empty($ranges)){
+            return [];
+        }
+        $values = [];
+        foreach ($ranges as $range){
+            $values[] = $this->format_range_value($range['min'], $range['max']);
+        }
+        return $values;
+    }
+
+    private function parse_selected_ranges($raw){
+        $chunks = array_filter(array_map('trim', explode(',', (string)$raw)));
+        $ranges = [];
+        foreach ($chunks as $chunk){
+            if (!preg_match('/^(-?[\d.,]+)\s*-\s*(-?[\d.,]+)$/', $chunk, $matches)){
+                continue;
+            }
+            $min = $this->normalize_decimal($matches[1]);
+            $max = $this->normalize_decimal($matches[2]);
+            if ($min === null || $max === null){
+                continue;
+            }
+            if ($max < $min){
+                $tmp = $min;
+                $min = $max;
+                $max = $tmp;
+            }
+            $ranges[] = ['min'=>$min, 'max'=>$max];
+        }
+        return $ranges;
+    }
+
+    private function normalize_decimal($value){
+        $normalized = str_replace(',', '.', trim((string)$value));
+        if ($normalized === '' || !is_numeric($normalized)){
+            return null;
+        }
+        return (float)$normalized;
+    }
+
+    private function format_range_number($value){
+        if (!is_numeric($value)){
+            return '';
+        }
+        $number = (float)$value;
+        if (abs($number - round($number)) < 0.00001){
+            return (string)intval(round($number));
+        }
+        $formatted = rtrim(rtrim(number_format($number, 4, '.', ''), '0'), '.');
+        return $formatted === '' ? '0' : $formatted;
+    }
+
+    private function format_range_value($min, $max){
+        return $this->format_range_number($min).'-'.$this->format_range_number($max);
+    }
+
+    private function format_range_attr($value){
+        if (!is_numeric($value)){
+            return '';
+        }
+        $number = (float)$value;
+        $formatted = rtrim(rtrim(number_format($number, 4, '.', ''), '0'), '.');
+        return $formatted === '' ? '0' : $formatted;
     }
 }

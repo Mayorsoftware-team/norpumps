@@ -48,6 +48,22 @@ $order_field_id = 'np-orderby-'.uniqid();
           </div>
         </div>
       <?php endif; ?>
+      <?php if (!empty($technical_filters)): ?>
+        <?php foreach ($technical_filters as $filter_box): ?>
+          <div class="np-filter np-filter--<?php echo esc_attr($filter_box['slug']); ?>" data-filter="<?php echo esc_attr($filter_box['slug']); ?>">
+            <div class="np-filter__head"><?php echo esc_html($filter_box['title']); ?></div>
+            <div class="np-filter__body">
+              <div class="np-checklist np-checklist--range" data-filter-key="<?php echo esc_attr($filter_box['slug']); ?>">
+                <?php foreach ($filter_box['bins'] as $bin): ?>
+                  <label>
+                    <input type="checkbox" value="<?php echo esc_attr($bin['value']); ?>" data-min="<?php echo esc_attr($bin['min']); ?>" data-max="<?php echo esc_attr($bin['max']); ?>" <?php checked(!empty($bin['checked'])); ?>> <?php echo esc_html($bin['label']); ?>
+                  </label>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
       <?php if (in_array('cat',$filters_arr) && !empty($groups)): ?>
         <?php foreach ($groups as $g):
           $parent = get_term_by('slug', $g['slug'], 'product_cat');

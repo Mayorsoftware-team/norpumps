@@ -133,6 +133,15 @@ jQuery(function($){
         data['cat_'+group] = vals.join(',');
       }
     });
+    $root.find('.np-checklist[data-filter-key]').each(function(){
+      const filterKey = $(this).data('filterKey');
+      if (!filterKey){ return; }
+      const values = $(this).find('input:checked').map(function(){ return this.value; }).get();
+      if (values.length){
+        const uniqueValues = Array.from(new Set(values));
+        data[filterKey] = uniqueValues.join(',');
+      }
+    });
     return data;
   }
   function toQuery($root, obj){
@@ -250,6 +259,15 @@ jQuery(function($){
           if (values.includes(this.value)){ this.checked = true; }
         });
       }
+    });
+    $root.find('.np-checklist[data-filter-key]').each(function(){
+      const filterKey = $(this).data('filterKey');
+      if (!filterKey) return;
+      const values = (url.searchParams.get(filterKey) || '').split(',').map(val => val.trim()).filter(Boolean);
+      if (!values.length) return;
+      $(this).find('input').each(function(){
+        if (values.includes(this.value)){ this.checked = true; }
+      });
     });
 
     const queryOrder = url.searchParams.get('orderby');
