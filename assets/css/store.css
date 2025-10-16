@@ -44,7 +44,7 @@
 .np-card__title{ font-size:16px; margin:6px 0 8px; min-height:44px; }
 .norpumps-store .np-card__title,
 .norpumps-store .np-card__title a{
-  font-size:16px !important;
+  font-size:20px !important;
   color:#000 !important;
   text-decoration:none;
 }
