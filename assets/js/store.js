@@ -7,6 +7,56 @@ jQuery(function($){
   };
   const SCROLL_OFFSET = 120;
   const isFiniteNumber = Number.isFinite || function(value){ return typeof value === 'number' && isFinite(value); };
+  const PRICE_PRECISION = 100;
+
+  function formatPriceValue(value){
+    const numeric = parseFloat(value);
+    if (!isFiniteNumber(numeric)) return '';
+    const rounded = Math.round(numeric * PRICE_PRECISION) / PRICE_PRECISION;
+    if (Math.abs(rounded - Math.round(rounded)) < 1e-6){
+      return Math.round(rounded).toString();
+    }
+    return rounded.toFixed(2);
+  }
+
+  function getDefaultPriceMin($root){
+    const val = parseFloat($root.data('defaultPriceMin'));
+    return isFiniteNumber(val) ? val : 0;
+  }
+  function getDefaultPriceMax($root){
+    const val = parseFloat($root.data('defaultPriceMax'));
+    const min = getDefaultPriceMin($root);
+    if (!isFiniteNumber(val) || val < min){
+      return min;
+    }
+    return val;
+  }
+  function normalizePriceRange($root){
+    const $minInput = $root.find('.np-price-min');
+    const $maxInput = $root.find('.np-price-max');
+    if (!$minInput.length || !$maxInput.length){
+      return {min:null, max:null};
+    }
+    const defaultMin = getDefaultPriceMin($root);
+    const defaultMax = getDefaultPriceMax($root);
+    const rawMin = parseFloat(String($minInput.val()).replace(',', '.'));
+    const rawMax = parseFloat(String($maxInput.val()).replace(',', '.'));
+    let minVal = isFiniteNumber(rawMin) ? rawMin : defaultMin;
+    let maxVal = isFiniteNumber(rawMax) ? rawMax : defaultMax;
+    minVal = Math.max(defaultMin, minVal);
+    maxVal = Math.min(defaultMax, Math.max(minVal, maxVal));
+    if (minVal > maxVal){
+      minVal = defaultMin;
+      maxVal = defaultMax;
+    }
+    minVal = Math.max(0, minVal);
+    maxVal = Math.max(minVal, maxVal);
+    $minInput.val(formatPriceValue(minVal));
+    $maxInput.val(formatPriceValue(maxVal));
+    $root.data('priceMin', minVal);
+    $root.data('priceMax', maxVal);
+    return {min:minVal, max:maxVal};
+  }
 
   function getDefaultPerPage($root){
     const val = parseInt($root.data('defaultPerPage'), 10);
@@ -48,6 +98,9 @@ jQuery(function($){
     if (orderDir){ data.order = orderDir; }
     const search = $root.find('.np-search').val();
     if (search){ data.s = search; }
+    const range = normalizePriceRange($root);
+    if (range.min !== null){ data.min_price = range.min; }
+    if (range.max !== null){ data.max_price = range.max; }
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
       const group = $(this).data('group');
       const vals = $(this).find('input:checked').map(function(){ return this.value; }).get();
@@ -114,6 +167,35 @@ jQuery(function($){
       load($root, 1, {scroll:true});
     });
   }
+  function bindPriceFilter($root){
+    $root.on('mousedown', '.np-price-apply', function(){
+      $root.data('skipPriceBlur', true);
+      $(document).one('mouseup.npPrice', function(){
+        setTimeout(function(){ $root.removeData('skipPriceBlur'); }, 0);
+      });
+    });
+    $root.on('keyup', '.np-price-apply', function(){
+      setTimeout(function(){ $root.removeData('skipPriceBlur'); }, 0);
+    });
+    $root.on('click', '.np-price-apply', function(e){
+      e.preventDefault();
+      normalizePriceRange($root);
+      resetToFirstPage($root);
+      load($root, 1, {scroll:true});
+    });
+    $root.on('blur', '.np-price-input', function(){
+      if ($root.data('skipPriceBlur')){ return; }
+      normalizePriceRange($root);
+      resetToFirstPage($root);
+      load($root, 1, {scroll:true});
+    });
+    $root.on('keyup', '.np-price-input', function(e){
+      if (e.keyCode === 13){
+        e.preventDefault();
+        $(this).blur();
+      }
+    });
+  }
 
   $('.norpumps-store').each(function(){
     const $root = $(this);
@@ -131,6 +213,7 @@ jQuery(function($){
     });
 
     bindAllToggle($root);
+    bindPriceFilter($root);
 
     const url = new URL(window.location.href);
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
@@ -157,6 +240,15 @@ jQuery(function($){
     if (isFiniteNumber(queryPer) && queryPer > 0){ setPerPage($root, queryPer); }
     const queryPage = parseInt(url.searchParams.get('page'), 10);
     if (isFiniteNumber(queryPage) && queryPage > 0){ setCurrentPage($root, queryPage); }
+    const queryMinPrice = parseFloat(url.searchParams.get('min_price'));
+    const queryMaxPrice = parseFloat(url.searchParams.get('max_price'));
+    if (isFiniteNumber(queryMinPrice)){
+      $root.find('.np-price-min').val(formatPriceValue(queryMinPrice));
+    }
+    if (isFiniteNumber(queryMaxPrice)){
+      $root.find('.np-price-max').val(formatPriceValue(queryMaxPrice));
+    }
+    normalizePriceRange($root);
 
     load($root, getCurrentPage($root), {scroll:false});
   });
