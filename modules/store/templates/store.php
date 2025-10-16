@@ -6,6 +6,8 @@ $default_page_attr = isset($default_page) ? intval($default_page) : 1;
 $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
 $orderby_value = isset($orderby_query) ? $orderby_query : 'menu_order title';
 if (!isset($filters_arr)) $filters_arr = [];
+$meta_filters = isset($meta_filters) && is_array($meta_filters) ? $meta_filters : [];
+$meta_filters_config_token = isset($meta_filters_config_token) && is_string($meta_filters_config_token) ? $meta_filters_config_token : '';
 $current_price_min = isset($requested_price_min) ? floatval($requested_price_min) : (isset($default_price_min) ? floatval($default_price_min) : 0);
 $current_price_max = isset($requested_price_max) ? floatval($requested_price_max) : (isset($default_price_max) ? floatval($default_price_max) : $current_price_min);
 $default_price_min_attr = isset($default_price_min) ? floatval($default_price_min) : $current_price_min;
@@ -13,7 +15,8 @@ $default_price_max_attr = isset($default_price_max) ? floatval($default_price_ma
 $has_price_filter = in_array('price', $filters_arr, true);
 $has_order_filter = in_array('order', $filters_arr, true);
 $has_cat_filter = in_array('cat', $filters_arr, true) && !empty($groups);
-$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter;
+$has_meta_filter = !empty($meta_filters);
+$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter || $has_meta_filter;
 $filters_element_id = 'np-filters-'.uniqid();
 $order_field_id = 'np-orderby-'.uniqid();
 ?>
@@ -23,7 +26,7 @@ if ($has_any_filter) {
     $store_classes[] = 'has-mobile-filters';
 }
 ?>
-<div class="<?php echo esc_attr(implode(' ', $store_classes)); ?>" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-price-min="<?php echo esc_attr(number_format($current_price_min, 2, '.', '')); ?>" data-price-max="<?php echo esc_attr(number_format($current_price_max, 2, '.', '')); ?>" data-default-price-min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" data-default-price-max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>">
+<div class="<?php echo esc_attr(implode(' ', $store_classes)); ?>" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-price-min="<?php echo esc_attr(number_format($current_price_min, 2, '.', '')); ?>" data-price-max="<?php echo esc_attr(number_format($current_price_max, 2, '.', '')); ?>" data-default-price-min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" data-default-price-max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>"<?php if ($meta_filters_config_token !== ''): ?> data-meta-config="<?php echo esc_attr($meta_filters_config_token); ?>"<?php endif; ?>>
   <?php if ($has_any_filter): ?>
     <button type="button" class="np-filters-trigger" aria-controls="<?php echo esc_attr($filters_element_id); ?>" aria-expanded="false">
       <span class="np-filters-trigger__icon" aria-hidden="true">✨</span>
@@ -91,6 +94,30 @@ if ($has_any_filter) {
                 }
                 np_render_children_only($parent->term_id,0);
                 ?>
+              </div>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+      <?php if ($has_meta_filter): ?>
+        <?php foreach ($meta_filters as $meta_filter):
+          $meta_label = $meta_filter['label'];
+          if (function_exists('mb_strtoupper')){
+              $meta_head = mb_strtoupper($meta_label, 'UTF-8');
+          } else {
+              $meta_head = strtoupper($meta_label);
+          }
+          ?>
+          <div class="np-filter np-filter--meta np-filter--meta-<?php echo esc_attr($meta_filter['type']); ?>" data-meta="<?php echo esc_attr($meta_filter['id']); ?>">
+            <div class="np-filter__head"><?php echo esc_html($meta_head); ?></div>
+            <div class="np-filter__body">
+              <?php if ($show_all): ?>
+                <label class="np-all"><input type="checkbox" class="np-all-toggle" checked> <?php esc_html_e('Todos','norpumps'); ?></label>
+              <?php endif; ?>
+              <div class="np-checklist" data-meta-key="<?php echo esc_attr($meta_filter['key']); ?>" data-meta-type="<?php echo esc_attr($meta_filter['type']); ?>" data-param="<?php echo esc_attr($meta_filter['param']); ?>">
+                <?php foreach ($meta_filter['bins'] as $bin): ?>
+                  <label><input type="checkbox" value="<?php echo esc_attr($bin['value']); ?>"> <?php echo esc_html($bin['label']); ?></label>
+                <?php endforeach; ?>
               </div>
             </div>
           </div>

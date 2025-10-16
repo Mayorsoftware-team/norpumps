@@ -125,12 +125,25 @@ jQuery(function($){
     const range = normalizePriceRange($root);
     if (range.min !== null){ data.min_price = range.min; }
     if (range.max !== null){ data.max_price = range.max; }
+    const metaConfigToken = $root.data('metaConfig');
+    if (typeof metaConfigToken === 'string' && metaConfigToken.length){
+      data.meta_config = metaConfigToken;
+    }
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
       const group = $(this).data('group');
       const vals = $(this).find('input:checked').map(function(){ return this.value; }).get();
       const allOn = $(this).closest('.np-filter__body').find('.np-all-toggle').is(':checked');
       if (group && vals.length && !allOn){
         data['cat_'+group] = vals.join(',');
+      }
+    });
+    $root.find('.np-checklist[data-meta-key]').each(function(){
+      const param = $(this).data('param');
+      if (!param) return;
+      const vals = $(this).find('input:checked').map(function(){ return this.value; }).get();
+      const allOn = $(this).closest('.np-filter__body').find('.np-all-toggle').is(':checked');
+      if (vals.length && !allOn){
+        data[param] = vals.join(',');
       }
     });
     return data;
@@ -140,7 +153,7 @@ jQuery(function($){
     const defaultPer = getDefaultPerPage($root);
     const defaultPage = getDefaultPage($root);
     Object.keys(obj).forEach(key => {
-      if (['action','nonce'].includes(key)) return;
+      if (['action','nonce','meta_config'].includes(key)) return;
       if (obj[key] === '' || obj[key] == null) return;
       if (key === 'page' && parseInt(obj[key], 10) === defaultPage) return;
       if (key === 'per_page' && parseInt(obj[key], 10) === defaultPer) return;
@@ -347,6 +360,18 @@ jQuery(function($){
         $body.find('.np-all-toggle').prop('checked', false);
         $(this).find('input').each(function(){
           if (values.includes(this.value)){ this.checked = true; }
+        });
+      }
+    });
+    $root.find('.np-checklist[data-meta-key]').each(function(){
+      const param = $(this).data('param');
+      if (!param) return;
+      const values = (url.searchParams.get(param) || '').split(',').filter(Boolean);
+      if (values.length){
+        const $body = $(this).closest('.np-filter__body');
+        $body.find('.np-all-toggle').prop('checked', false);
+        $(this).find('input').each(function(){
+          if (values.includes(String(this.value))){ this.checked = true; }
         });
       }
     });

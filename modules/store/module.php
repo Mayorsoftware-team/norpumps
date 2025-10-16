@@ -135,6 +135,10 @@ class NorPumps_Modules_Store {
             $parts = array_map('trim', explode(':',$chunk,2));
             if (count($parts)==2){ $label = sanitize_text_field($parts[0]); $slug = sanitize_title($parts[1]); if ($slug) $groups[]=['label'=>$label?:$slug,'slug'=>$slug]; }
         }
+        $meta_filters_data = $this->parse_meta_filters($atts);
+        $meta_filters = $meta_filters_data['filters'];
+        $meta_filters_config_token = $meta_filters_data['config_token'];
+
         $default_page = max(1, intval($atts['page']));
         $requested_per_page = max(1, min(60, intval(isset($_GET['per_page']) ? $_GET['per_page'] : $per_page)));
         $requested_page = max(1, intval(isset($_GET['page']) ? $_GET['page'] : $default_page));
@@ -166,7 +170,7 @@ class NorPumps_Modules_Store {
         include __DIR__.'/templates/store.php';
         return ob_get_clean();
     }
-    private function build_wc_query_from_request(){
+    private function build_wc_query_from_request($meta_filters = []){
         $limit = max(1, min(60, intval(norpumps_array_get($_REQUEST,'per_page',12))));
         $args = [
             'status'=>'publish',
@@ -219,6 +223,9 @@ class NorPumps_Modules_Store {
                 $meta_query = $default_meta_query;
             }
         }
+        if (!is_array($meta_query)){
+            $meta_query = [];
+        }
         $min_price_raw = norpumps_array_get($_REQUEST, 'min_price', null);
         $max_price_raw = norpumps_array_get($_REQUEST, 'max_price', null);
         $has_min_price = $min_price_raw !== null && $min_price_raw !== '';
@@ -259,17 +266,74 @@ class NorPumps_Modules_Store {
                 ];
             }
         }
+        if (!empty($meta_filters)){
+            foreach ($meta_filters as $filter){
+                $param = norpumps_array_get($filter, 'param', '');
+                $meta_key = norpumps_array_get($filter, 'key', '');
+                if (!$param || !$meta_key) continue;
+                $raw = norpumps_array_get($_REQUEST, $param, '');
+                if ($raw === '' || $raw === null) continue;
+                $selected = array_filter(array_map('trim', explode(',', (string)$raw)));
+                if (!$selected) continue;
+                $type = norpumps_array_get($filter, 'type', '');
+                if ($type === 'range'){
+                    $range_clauses = [];
+                    foreach (norpumps_array_get($filter, 'bins', []) as $bin){
+                        $value = (string)norpumps_array_get($bin, 'value', '');
+                        if ($value === '' || !in_array($value, $selected, true)) continue;
+                        $has_min = array_key_exists('min', $bin) && $bin['min'] !== null && $bin['min'] !== '';
+                        $has_max = array_key_exists('max', $bin) && $bin['max'] !== null && $bin['max'] !== '';
+                        if (!$has_min && !$has_max){
+                            continue;
+                        }
+                        $clause = [
+                            'key'=>$meta_key,
+                            'type'=>'DECIMAL(20,6)',
+                        ];
+                        if ($has_min && $has_max){
+                            $min_val = floatval($bin['min']);
+                            $max_val = floatval($bin['max']);
+                            if ($max_val < $min_val){
+                                $tmp = $min_val;
+                                $min_val = $max_val;
+                                $max_val = $tmp;
+                            }
+                            $clause['value'] = [$min_val, $max_val];
+                            $clause['compare'] = 'BETWEEN';
+                        } elseif ($has_min){
+                            $clause['value'] = floatval($bin['min']);
+                            $clause['compare'] = '>=';
+                        } else {
+                            $clause['value'] = floatval($bin['max']);
+                            $clause['compare'] = '<=';
+                        }
+                        $range_clauses[] = $clause;
+                    }
+                    if ($range_clauses){
+                        if (count($range_clauses) === 1){
+                            $meta_query[] = $range_clauses[0];
+                        } else {
+                            $meta_query[] = array_merge(['relation'=>'OR'], $range_clauses);
+                        }
+                    }
+                }
+            }
+        }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
         if ($search !== ''){ $args['s'] = $search; }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
         if (!empty($meta_query)){
+            if (!isset($meta_query['relation'])){
+                $meta_query['relation'] = 'AND';
+            }
             $args['meta_query'] = $meta_query;
         }
         return $args;
     }
     public function ajax_query(){
         check_ajax_referer('norpumps_store','nonce');
-        $args = $this->build_wc_query_from_request();
+        $meta_filters = $this->extract_meta_filters_from_request();
+        $args = $this->build_wc_query_from_request($meta_filters);
         $results = wc_get_products($args);
         $products = is_array($results) ? norpumps_array_get($results, 'products', []) : (property_exists($results, 'products') ? $results->products : []);
         $total = is_array($results) ? intval(norpumps_array_get($results, 'total', 0)) : (property_exists($results, 'total') ? intval($results->total) : 0);
@@ -343,5 +407,216 @@ class NorPumps_Modules_Store {
         );
         $html .= '</ul></nav>';
         return $html;
+    }
+    private function parse_meta_filters($atts){
+        $grouped = [];
+        foreach ($atts as $attr=>$value){
+            if (!is_string($attr)) continue;
+            if (preg_match('/^meta(\d+)_(.+)$/', $attr, $m)){
+                $index = intval($m[1]);
+                $key = strtolower($m[2]);
+                if (!isset($grouped[$index])){
+                    $grouped[$index] = [];
+                }
+                $grouped[$index][$key] = $value;
+            }
+        }
+        if (!$grouped){
+            return ['filters'=>[], 'config_token'=>''];
+        }
+        ksort($grouped);
+        $filters = [];
+        $config = [];
+        foreach ($grouped as $index=>$data){
+            $meta_key_raw = isset($data['key']) ? $data['key'] : '';
+            $meta_key = is_string($meta_key_raw) ? preg_replace('/[^A-Za-z0-9_\-]/', '', $meta_key_raw) : '';
+            if ($meta_key === ''){
+                continue;
+            }
+            $label_raw = isset($data['label']) ? $data['label'] : $meta_key;
+            $label = sanitize_text_field($label_raw);
+            if ($label === ''){
+                $label = $meta_key;
+            }
+            $unit_raw = isset($data['unit']) ? $data['unit'] : '';
+            $unit = sanitize_text_field($unit_raw);
+            $type_raw = isset($data['type']) ? strtolower($data['type']) : 'range';
+            $type = in_array($type_raw, ['range'], true) ? $type_raw : 'range';
+            $id = 'meta'.max(1, $index);
+            $param = 'meta_'.sanitize_key($id);
+            $filter = [
+                'id'=>$id,
+                'label'=>$label,
+                'key'=>$meta_key,
+                'type'=>$type,
+                'unit'=>$unit,
+                'param'=>$param,
+            ];
+            if ($type === 'range'){
+                $bins_raw = isset($data['bins']) ? $data['bins'] : '';
+                $bins = $this->parse_meta_range_bins($bins_raw, $unit);
+                if (!$bins){
+                    continue;
+                }
+                $filter['bins'] = $bins;
+            }
+            $filters[] = $filter;
+            $config_entry = [
+                'param'=>$param,
+                'key'=>$meta_key,
+                'type'=>$type,
+            ];
+            if ($type === 'range'){
+                $config_entry['bins'] = array_map(function($bin){
+                    return [
+                        'value'=>$bin['value'],
+                        'min'=>array_key_exists('min', $bin) ? $bin['min'] : null,
+                        'max'=>array_key_exists('max', $bin) ? $bin['max'] : null,
+                    ];
+                }, $filter['bins']);
+            }
+            $config[] = $config_entry;
+        }
+        $token = '';
+        if ($config){
+            $json = wp_json_encode($config);
+            if ($json !== false){
+                $token = base64_encode($json);
+            }
+        }
+        return ['filters'=>$filters, 'config_token'=>$token];
+    }
+    private function parse_meta_range_bins($raw_bins, $unit){
+        $list = [];
+        if (!is_string($raw_bins) || trim($raw_bins) === ''){
+            return $list;
+        }
+        $parts = array_filter(array_map('trim', explode('|', $raw_bins)));
+        foreach ($parts as $part){
+            $label = '';
+            $value_part = $part;
+            if (strpos($part, ':') !== false){
+                $segments = explode(':', $part, 2);
+                $value_part = trim($segments[0]);
+                $label = sanitize_text_field($segments[1]);
+            }
+            $value_clean = str_replace(',', '.', $value_part);
+            $min = null;
+            $max = null;
+            if (preg_match('/^(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)$/', $value_clean, $m)){
+                $min = floatval($m[1]);
+                $max = floatval($m[2]);
+                if ($max < $min){
+                    $tmp = $min;
+                    $min = $max;
+                    $max = $tmp;
+                }
+            } elseif (preg_match('/^(-?\d+(?:\.\d+)?)\s*\+$/', $value_clean, $m)){
+                $min = floatval($m[1]);
+                $max = null;
+            } elseif (preg_match('/^(-?\d+(?:\.\d+)?)$/', $value_clean, $m)){
+                $min = floatval($m[1]);
+                $max = floatval($m[1]);
+            } else {
+                continue;
+            }
+            $value_token = ($max === null) ? ($this->format_meta_number($min).'+') : ($this->format_meta_number($min).'-'.$this->format_meta_number($max));
+            $unit_suffix = $unit ? ' '.trim($unit) : '';
+            if ($label === ''){
+                if ($max === null){
+                    /* translators: %1$s is the minimum value, %2$s is the unit suffix */
+                    $label = sprintf(__('Desde %1$s%2$s','norpumps'), $this->format_meta_number($min), $unit_suffix);
+                } elseif ($min === $max){
+                    /* translators: %1$s is the value, %2$s is the unit suffix */
+                    $label = sprintf(__('%1$s%2$s','norpumps'), $this->format_meta_number($min), $unit_suffix);
+                } else {
+                    /* translators: %1$s is the minimum value, %2$s is the maximum value, %3$s is the unit suffix */
+                    $label = sprintf(__('De %1$s a %2$s%3$s','norpumps'), $this->format_meta_number($min), $this->format_meta_number($max), $unit_suffix);
+                }
+            }
+            $list[] = [
+                'value'=>$value_token,
+                'min'=>$min,
+                'max'=>$max,
+                'label'=>$label,
+            ];
+        }
+        return $list;
+    }
+    private function format_meta_number($value){
+        if (!is_numeric($value)){
+            return '';
+        }
+        $number = floatval($value);
+        if (abs($number - round($number)) < 0.0001){
+            return (string)round($number);
+        }
+        return rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
+    }
+    private function extract_meta_filters_from_request(){
+        $raw = norpumps_array_get($_REQUEST, 'meta_config', '');
+        if (!is_string($raw) || $raw === ''){
+            return [];
+        }
+        $decoded = base64_decode($raw, true);
+        if ($decoded === false){
+            return [];
+        }
+        $data = json_decode($decoded, true);
+        if (!is_array($data)){
+            return [];
+        }
+        $filters = [];
+        foreach ($data as $item){
+            if (!is_array($item)){
+                continue;
+            }
+            $param_raw = isset($item['param']) ? $item['param'] : '';
+            $param = is_string($param_raw) ? sanitize_key($param_raw) : '';
+            if ($param === '' || strpos($param, 'meta_') !== 0){
+                continue;
+            }
+            $meta_key_raw = isset($item['key']) ? $item['key'] : '';
+            $meta_key = is_string($meta_key_raw) ? sanitize_text_field($meta_key_raw) : '';
+            if ($meta_key === ''){
+                continue;
+            }
+            $type_raw = isset($item['type']) ? $item['type'] : 'range';
+            $type = is_string($type_raw) ? sanitize_key($type_raw) : 'range';
+            if ($type === ''){
+                $type = 'range';
+            }
+            $filter = [
+                'param'=>$param,
+                'key'=>$meta_key,
+                'type'=>$type,
+            ];
+            if ($type === 'range'){
+                $filter['bins'] = [];
+                $bins = isset($item['bins']) && is_array($item['bins']) ? $item['bins'] : [];
+                foreach ($bins as $bin){
+                    if (!is_array($bin)){
+                        continue;
+                    }
+                    $value_raw = isset($bin['value']) ? $bin['value'] : '';
+                    $value = is_string($value_raw) ? sanitize_text_field($value_raw) : '';
+                    if ($value === ''){
+                        continue;
+                    }
+                    $min = array_key_exists('min', $bin) ? $bin['min'] : null;
+                    $max = array_key_exists('max', $bin) ? $bin['max'] : null;
+                    $filter['bins'][] = [
+                        'value'=>$value,
+                        'min'=>$min,
+                        'max'=>$max,
+                    ];
+                }
+                if (!$filter['bins']){
+                    continue;
+                }
+            }
+            $filters[] = $filter;
+        }
+        return $filters;
     }
 }
