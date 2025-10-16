@@ -158,6 +158,7 @@ class NorPumps_Modules_Store {
             $requested_price_min = $default_price_min;
             $requested_price_max = $default_price_max;
         }
+        $meta_filters = $this->parse_meta_filters_from_atts($atts);
         wp_enqueue_script('wc-add-to-cart');
         wp_enqueue_script('wc-cart-fragments');
         wp_enqueue_style('woocommerce-general');
@@ -259,10 +260,66 @@ class NorPumps_Modules_Store {
                 ];
             }
         }
+        $meta_filter_definitions = $this->parse_meta_filters_from_request($_REQUEST);
+        foreach ($meta_filter_definitions as $handle => $definition){
+            $meta_key = isset($definition['meta_key']) ? $this->sanitize_meta_key_value($definition['meta_key']) : '';
+            if (!$meta_key){
+                continue;
+            }
+            $raw_values = norpumps_array_get($_REQUEST, 'meta_'.$handle, '');
+            $selected_values = array_filter(array_map('trim', explode(',', sanitize_text_field($raw_values))));
+            if (!$selected_values){
+                continue;
+            }
+            $type = isset($definition['type']) ? $definition['type'] : 'text';
+            if ($type === 'range'){
+                $allowed_bins = [];
+                if (!empty($definition['bins']) && is_array($definition['bins'])){
+                    foreach ($definition['bins'] as $bin){
+                        if (!isset($bin['value'])){ continue; }
+                        $allowed_bins[$bin['value']] = $bin;
+                    }
+                }
+                $range_clauses = [];
+                foreach ($selected_values as $value){
+                    $bin = isset($allowed_bins[$value]) ? $allowed_bins[$value] : $this->parse_range_value_string($value);
+                    if (!$bin){
+                        continue;
+                    }
+                    $min = isset($bin['min']) ? floatval($bin['min']) : null;
+                    $max = isset($bin['max']) ? floatval($bin['max']) : null;
+                    if ($min === null || $max === null){
+                        continue;
+                    }
+                    $range_clauses[] = [
+                        'key'=>$meta_key,
+                        'value'=>[$min, $max],
+                        'compare'=>'BETWEEN',
+                        'type'=>'NUMERIC',
+                    ];
+                }
+                if ($range_clauses){
+                    if (count($range_clauses) === 1){
+                        $meta_query[] = $range_clauses[0];
+                    } else {
+                        $meta_query[] = array_merge(['relation'=>'OR'], $range_clauses);
+                    }
+                }
+            } else {
+                $meta_query[] = [
+                    'key'=>$meta_key,
+                    'value'=>$selected_values,
+                    'compare'=>'IN',
+                ];
+            }
+        }
         $search = sanitize_text_field(norpumps_array_get($_REQUEST,'s',''));
         if ($search !== ''){ $args['s'] = $search; }
         if (count($tax_query)>1) $args['tax_query']=$tax_query;
         if (!empty($meta_query)){
+            if (!isset($meta_query['relation'])){
+                $meta_query['relation'] = 'AND';
+            }
             $args['meta_query'] = $meta_query;
         }
         return $args;
@@ -343,5 +400,206 @@ class NorPumps_Modules_Store {
         );
         $html .= '</ul></nav>';
         return $html;
+    }
+
+    private function parse_meta_filters_from_atts($atts){
+        $filters = [];
+        foreach ($atts as $key => $value){
+            if (!is_scalar($value)){
+                continue;
+            }
+            if (!preg_match('/^(meta[0-9]+)_(.+)$/', $key, $matches)){
+                continue;
+            }
+            $handle = $matches[1];
+            $property = $matches[2];
+            if (!isset($filters[$handle])){
+                $filters[$handle] = [
+                    'handle'=>$handle,
+                    'meta_key'=>'',
+                    'label'=>'',
+                    'type'=>'text',
+                    'unit'=>'',
+                    'raw_bins'=>'',
+                    'bins'=>[],
+                ];
+            }
+            switch ($property){
+                case 'key':
+                    $filters[$handle]['meta_key'] = $this->sanitize_meta_key_value($value);
+                    break;
+                case 'label':
+                    $filters[$handle]['label'] = sanitize_text_field($value);
+                    break;
+                case 'type':
+                    $filters[$handle]['type'] = sanitize_key($value);
+                    break;
+                case 'unit':
+                    $filters[$handle]['unit'] = sanitize_text_field($value);
+                    break;
+                case 'bins':
+                    $filters[$handle]['raw_bins'] = sanitize_textarea_field($value);
+                    break;
+                default:
+                    $filters[$handle][$property] = sanitize_text_field($value);
+                    break;
+            }
+        }
+        foreach ($filters as $handle => &$filter){
+            if (empty($filter['label'])){
+                $filter['label'] = strtoupper($handle);
+            }
+            if (empty($filter['type'])){
+                $filter['type'] = 'text';
+            }
+            if ($filter['type'] === 'range'){
+                $filter['bins'] = $this->parse_range_bins(norpumps_array_get($filter, 'raw_bins', ''), norpumps_array_get($filter, 'unit', ''));
+            }
+        }
+        return $filters;
+    }
+
+    private function parse_meta_filters_from_request($request){
+        $filters = [];
+        foreach ($request as $key => $value){
+            if (!is_scalar($value)){
+                continue;
+            }
+            if (!preg_match('/^meta_([a-z0-9]+)_(key|type|bins|unit)$/i', $key, $matches)){
+                continue;
+            }
+            $handle = strtolower($matches[1]);
+            $property = strtolower($matches[2]);
+            if (!isset($filters[$handle])){
+                $filters[$handle] = [
+                    'handle'=>$handle,
+                    'meta_key'=>'',
+                    'type'=>'text',
+                    'unit'=>'',
+                    'raw_bins'=>'',
+                    'bins'=>[],
+                ];
+            }
+            switch ($property){
+                case 'key':
+                    $filters[$handle]['meta_key'] = $this->sanitize_meta_key_value($value);
+                    break;
+                case 'type':
+                    $filters[$handle]['type'] = sanitize_key($value);
+                    break;
+                case 'bins':
+                    $filters[$handle]['raw_bins'] = sanitize_textarea_field($value);
+                    break;
+                case 'unit':
+                    $filters[$handle]['unit'] = sanitize_text_field($value);
+                    break;
+            }
+        }
+        foreach ($filters as &$filter){
+            if (empty($filter['type'])){
+                $filter['type'] = 'text';
+            }
+            if ($filter['type'] === 'range'){
+                $filter['bins'] = $this->parse_range_bins(norpumps_array_get($filter, 'raw_bins', ''), norpumps_array_get($filter, 'unit', ''));
+            }
+        }
+        return $filters;
+    }
+
+    private function parse_range_bins($bins_string, $unit = ''){
+        $bins = [];
+        if (!is_string($bins_string) || trim($bins_string) === ''){
+            return $bins;
+        }
+        $unit_label = is_string($unit) ? trim($unit) : '';
+        foreach (explode('|', $bins_string) as $chunk){
+            $chunk = trim($chunk);
+            if ($chunk === ''){
+                continue;
+            }
+            $parts = explode(':', $chunk, 2);
+            $range_part = trim($parts[0]);
+            $custom_label = isset($parts[1]) ? sanitize_text_field($parts[1]) : '';
+            if (!preg_match('/^\s*(-?\d+(?:[\.,]\d+)?)\s*-\s*(-?\d+(?:[\.,]\d+)?)\s*$/', $range_part, $matches)){
+                continue;
+            }
+            $min = floatval(str_replace(',', '.', $matches[1]));
+            $max = floatval(str_replace(',', '.', $matches[2]));
+            if ($min > $max){
+                $tmp = $min;
+                $min = $max;
+                $max = $tmp;
+            }
+            $value = $this->format_range_number($min).':'.$this->format_range_number($max);
+            $label = $custom_label !== '' ? $custom_label : $this->build_range_label($min, $max, $unit_label);
+            $bins[] = [
+                'min'=>$min,
+                'max'=>$max,
+                'value'=>$value,
+                'label'=>$label,
+            ];
+        }
+        return $bins;
+    }
+
+    private function parse_range_value_string($value){
+        if (!is_string($value) || trim($value) === ''){
+            return null;
+        }
+        $value = trim($value);
+        if (!preg_match('/^\s*(-?\d+(?:[\.,]\d+)?)\s*(?:\:|\-)\s*(-?\d+(?:[\.,]\d+)?)\s*$/', $value, $matches)){
+            return null;
+        }
+        $min = floatval(str_replace(',', '.', $matches[1]));
+        $max = floatval(str_replace(',', '.', $matches[2]));
+        if ($min > $max){
+            $tmp = $min;
+            $min = $max;
+            $max = $tmp;
+        }
+        return [
+            'min'=>$min,
+            'max'=>$max,
+            'value'=>$this->format_range_number($min).':'.$this->format_range_number($max),
+        ];
+    }
+
+    private function build_range_label($min, $max, $unit = ''){
+        $unit_suffix = $unit !== '' ? ' '.$unit : '';
+        $formatted_min = $this->format_range_number($min);
+        $formatted_max = $this->format_range_number($max);
+        return sprintf(
+            /* translators: 1: minimum value, 2: maximum value, 3: unit suffix */
+            __('De %1$s a %2$s%3$s', 'norpumps'),
+            $formatted_min,
+            $formatted_max,
+            $unit_suffix
+        );
+    }
+
+    private function sanitize_meta_key_value($value){
+        if (!is_string($value)){
+            return '';
+        }
+        $sanitized = sanitize_text_field($value);
+        $sanitized = trim($sanitized);
+        if ($sanitized === ''){
+            return '';
+        }
+        $sanitized = preg_replace('/[^A-Za-z0-9_\-]/', '', $sanitized);
+        return $sanitized === null ? '' : $sanitized;
+    }
+
+    private function format_range_number($value){
+        if (!is_numeric($value)){
+            return '0';
+        }
+        $numeric = floatval($value);
+        if (abs($numeric - round($numeric)) < 0.00001){
+            return (string)round($numeric);
+        }
+        $formatted = number_format($numeric, 4, '.', '');
+        $formatted = rtrim(rtrim($formatted, '0'), '.');
+        return $formatted === '' ? '0' : $formatted;
     }
 }

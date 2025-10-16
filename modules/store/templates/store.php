@@ -6,6 +6,13 @@ $default_page_attr = isset($default_page) ? intval($default_page) : 1;
 $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
 $orderby_value = isset($orderby_query) ? $orderby_query : 'menu_order title';
 if (!isset($filters_arr)) $filters_arr = [];
+$meta_filters = isset($meta_filters) && is_array($meta_filters) ? $meta_filters : [];
+$active_meta_filters = [];
+foreach ($filters_arr as $filter_token){
+  if (isset($meta_filters[$filter_token])){
+    $active_meta_filters[$filter_token] = $meta_filters[$filter_token];
+  }
+}
 $current_price_min = isset($requested_price_min) ? floatval($requested_price_min) : (isset($default_price_min) ? floatval($default_price_min) : 0);
 $current_price_max = isset($requested_price_max) ? floatval($requested_price_max) : (isset($default_price_max) ? floatval($default_price_max) : $current_price_min);
 $default_price_min_attr = isset($default_price_min) ? floatval($default_price_min) : $current_price_min;
@@ -13,7 +20,8 @@ $default_price_max_attr = isset($default_price_max) ? floatval($default_price_ma
 $has_price_filter = in_array('price', $filters_arr, true);
 $has_order_filter = in_array('order', $filters_arr, true);
 $has_cat_filter = in_array('cat', $filters_arr, true) && !empty($groups);
-$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter;
+$has_meta_filters = !empty($active_meta_filters);
+$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter || $has_meta_filters;
 $filters_element_id = 'np-filters-'.uniqid();
 $order_field_id = 'np-orderby-'.uniqid();
 ?>
@@ -91,6 +99,40 @@ if ($has_any_filter) {
                 }
                 np_render_children_only($parent->term_id,0);
                 ?>
+              </div>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+      <?php if ($has_meta_filters): ?>
+        <?php foreach ($active_meta_filters as $handle => $meta_filter):
+          $meta_label = isset($meta_filter['label']) ? $meta_filter['label'] : strtoupper($handle);
+          $meta_type = isset($meta_filter['type']) ? $meta_filter['type'] : 'text';
+          $meta_key = isset($meta_filter['meta_key']) ? $meta_filter['meta_key'] : '';
+          $meta_unit = isset($meta_filter['unit']) ? $meta_filter['unit'] : '';
+          $raw_bins = isset($meta_filter['raw_bins']) ? $meta_filter['raw_bins'] : '';
+          $bins = isset($meta_filter['bins']) && is_array($meta_filter['bins']) ? $meta_filter['bins'] : [];
+          $selected_raw = sanitize_textarea_field(norpumps_array_get($_GET, 'meta_'.$handle, ''));
+          $selected_values = array_filter(array_map('trim', explode(',', $selected_raw)));
+          if ($meta_type !== 'range' || empty($meta_key) || empty($bins)){
+            continue;
+          }
+          $all_checked = $show_all ? empty($selected_values) : false;
+        ?>
+          <div class="np-filter np-filter--meta np-filter--<?php echo esc_attr($meta_type); ?>" data-meta-handle="<?php echo esc_attr($handle); ?>">
+            <div class="np-filter__head"><?php echo esc_html(strtoupper($meta_label)); ?></div>
+            <div class="np-filter__body">
+              <?php if ($show_all): ?>
+                <label class="np-all"><input type="checkbox" class="np-all-toggle" <?php checked($all_checked); ?>> <?php esc_html_e('Todos','norpumps'); ?></label>
+              <?php endif; ?>
+              <div class="np-checklist" data-meta-handle="<?php echo esc_attr($handle); ?>" data-meta-key="<?php echo esc_attr($meta_key); ?>" data-meta-type="<?php echo esc_attr($meta_type); ?>" data-meta-unit="<?php echo esc_attr($meta_unit); ?>" data-meta-bins="<?php echo esc_attr($raw_bins); ?>">
+                <?php foreach ($bins as $bin):
+                  $value = isset($bin['value']) ? $bin['value'] : '';
+                  if ($value === ''){ continue; }
+                  $is_checked = in_array($value, $selected_values, true);
+                ?>
+                  <label><input type="checkbox" value="<?php echo esc_attr($value); ?>" <?php checked($is_checked); ?>> <?php echo esc_html(norpumps_array_get($bin, 'label', $value)); ?></label>
+                <?php endforeach; ?>
               </div>
             </div>
           </div>
