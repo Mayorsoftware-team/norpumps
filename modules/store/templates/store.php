@@ -12,6 +12,7 @@ $default_price_min_attr = isset($default_price_min) ? floatval($default_price_mi
 $default_price_max_attr = isset($default_price_max) ? floatval($default_price_max) : $current_price_max;
 $has_price_filter = in_array('price', $filters_arr, true);
 $has_order_filter = in_array('order', $filters_arr, true);
+$technical_filters = isset($technical_filters) && is_array($technical_filters) ? $technical_filters : [];
 $order_field_id = 'np-orderby-'.uniqid();
 ?>
 <div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-price-min="<?php echo esc_attr(number_format($current_price_min, 2, '.', '')); ?>" data-price-max="<?php echo esc_attr(number_format($current_price_max, 2, '.', '')); ?>" data-default-price-min="<?php echo esc_attr(number_format($default_price_min_attr, 2, '.', '')); ?>" data-default-price-max="<?php echo esc_attr(number_format($default_price_max_attr, 2, '.', '')); ?>">
@@ -47,6 +48,20 @@ $order_field_id = 'np-orderby-'.uniqid();
             <button type="button" class="np-price-apply"><?php esc_html_e('Aplicar','norpumps'); ?></button>
           </div>
         </div>
+      <?php endif; ?>
+      <?php if (!empty($technical_filters)): ?>
+        <?php foreach ($technical_filters as $filter): ?>
+          <div class="np-filter np-filter--<?php echo esc_attr($filter['slug']); ?>">
+            <div class="np-filter__head"><?php echo esc_html($filter['label']); ?></div>
+            <div class="np-filter__body">
+              <div class="np-checklist" data-filter="<?php echo esc_attr($filter['slug']); ?>">
+                <?php foreach ($filter['bins'] as $bin): ?>
+                  <label><input type="checkbox" value="<?php echo esc_attr($bin['value']); ?>"> <?php echo esc_html($bin['label']); ?></label>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          </div>
+        <?php endforeach; ?>
       <?php endif; ?>
       <?php if (in_array('cat',$filters_arr) && !empty($groups)): ?>
         <?php foreach ($groups as $g):

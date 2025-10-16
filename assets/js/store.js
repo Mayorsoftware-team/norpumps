@@ -133,6 +133,14 @@ jQuery(function($){
         data['cat_'+group] = vals.join(',');
       }
     });
+    $root.find('.np-checklist[data-filter]').each(function(){
+      const filterKey = $(this).data('filter');
+      if (!filterKey){ return; }
+      const vals = $(this).find('input:checked').map(function(){ return this.value; }).get();
+      if (vals.length){
+        data[filterKey] = vals.join(',');
+      }
+    });
     return data;
   }
   function toQuery($root, obj){
@@ -250,6 +258,15 @@ jQuery(function($){
           if (values.includes(this.value)){ this.checked = true; }
         });
       }
+    });
+    $root.find('.np-checklist[data-filter]').each(function(){
+      const filterKey = $(this).data('filter');
+      if (!filterKey) return;
+      const values = (url.searchParams.get(filterKey) || '').split(',').filter(Boolean);
+      if (!values.length) return;
+      $(this).find('input').each(function(){
+        if (values.includes(this.value)){ this.checked = true; }
+      });
     });
 
     const queryOrder = url.searchParams.get('orderby');
