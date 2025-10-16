@@ -7,8 +7,17 @@ $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
 $search_value = isset($search_query) ? $search_query : '';
 $orderby_value = isset($orderby_query) ? $orderby_query : 'menu_order title';
 if (!isset($filters_arr)) $filters_arr = [];
+$price_filter_enabled = isset($price_filter_enabled) ? (bool)$price_filter_enabled : false;
+$price_min_attr = isset($price_min_attr) ? floatval($price_min_attr) : 0.0;
+$price_max_attr = isset($price_max_attr) ? floatval($price_max_attr) : 0.0;
+$price_current_min = isset($price_current_min) ? floatval($price_current_min) : $price_min_attr;
+$price_current_max = isset($price_current_max) ? floatval($price_current_max) : $price_max_attr;
+$currency_symbol = function_exists('get_woocommerce_currency_symbol') ? get_woocommerce_currency_symbol() : '$';
+$price_decimals = function_exists('wc_get_price_decimals') ? wc_get_price_decimals() : 0;
+$price_min_label = $currency_symbol . ' ' . number_format_i18n($price_current_min, $price_decimals);
+$price_max_label = $currency_symbol . ' ' . number_format_i18n($price_current_max, $price_decimals);
 ?>
-<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>">
+<div class="norpumps-store" data-columns="<?php echo esc_attr($columns); ?>" data-per-page="<?php echo esc_attr($current_per_page); ?>" data-default-per-page="<?php echo esc_attr($per_page); ?>" data-current-page="<?php echo esc_attr($current_page); ?>" data-default-page="<?php echo esc_attr($default_page_attr); ?>" data-price-enabled="<?php echo esc_attr($price_filter_enabled ? '1' : '0'); ?>" data-price-min="<?php echo esc_attr($price_min_attr); ?>" data-price-max="<?php echo esc_attr($price_max_attr); ?>" data-price-current-min="<?php echo esc_attr($price_current_min); ?>" data-price-current-max="<?php echo esc_attr($price_current_max); ?>">
   <div class="norpumps-store__header">
     <div class="norpumps-store__orderby">
       <label><?php esc_html_e('Ordenar…','norpumps'); ?></label>
@@ -27,6 +36,25 @@ if (!isset($filters_arr)) $filters_arr = [];
 
   <div class="norpumps-store__layout">
     <aside class="norpumps-filters">
+      <?php if ($price_filter_enabled): ?>
+        <div class="np-filter np-filter--price" data-filter="price">
+          <div class="np-filter__head"><?php esc_html_e('Precio','norpumps'); ?></div>
+          <div class="np-filter__body">
+            <div class="np-price-range">
+              <div class="np-price-range__header">
+                <span class="np-price-value np-price-value--min"><?php echo esc_html($price_min_label); ?></span>
+                <button type="button" class="np-price-reset"><?php esc_html_e('Restablecer','norpumps'); ?></button>
+                <span class="np-price-value np-price-value--max"><?php echo esc_html($price_max_label); ?></span>
+              </div>
+              <div class="np-price-range__sliders">
+                <div class="np-price-progress"></div>
+                <input type="range" class="np-price-input" data-handle="min" min="<?php echo esc_attr($price_min_attr); ?>" max="<?php echo esc_attr($price_max_attr); ?>" step="1" value="<?php echo esc_attr($price_current_min); ?>">
+                <input type="range" class="np-price-input" data-handle="max" min="<?php echo esc_attr($price_min_attr); ?>" max="<?php echo esc_attr($price_max_attr); ?>" step="1" value="<?php echo esc_attr($price_current_max); ?>">
+              </div>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
       <?php if (in_array('cat',$filters_arr) && !empty($groups)): ?>
         <?php foreach ($groups as $g):
           $parent = get_term_by('slug', $g['slug'], 'product_cat');
