@@ -235,13 +235,7 @@ class NorPumps_Modules_Product_Frontend {
             NORPUMPS_VERSION
         );
 
-        wp_enqueue_script(
-            'norpumps-product-frontend',
-            NORPUMPS_URL . 'modules/product-frontend/assets/js/product-frontend.js',
-            [],
-            NORPUMPS_VERSION,
-            true
-        );
+        // The electric data layout is now handled purely with CSS, so no script enqueue is necessary.
     }
 
     public function filter_tabs($tabs) {

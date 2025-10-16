@@ -22,21 +22,19 @@ if (!$values) {
 }
 ?>
 <div class="np-tab np-tab--datos-electricos">
-    <table class="np-spec-table">
-        <tbody>
-            <?php foreach ($values as $index => $item) : ?>
-                <?php
-                $row_mod = $index % 2 === 0 ? 'is-odd' : 'is-even';
-                ?>
-                <tr class="np-spec-table__row <?php echo esc_attr($row_mod); ?>">
-                    <th class="np-spec-table__cell np-spec-table__cell--label" scope="row">
-                        <?php echo esc_html($item[0]); ?>
-                    </th>
-                    <td class="np-spec-table__cell np-spec-table__cell--value">
-                        <?php echo esc_html($item[1]); ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+    <div class="np-spec-table" role="table">
+        <?php foreach ($values as $index => $item) : ?>
+            <?php
+            $row_mod = $index % 2 === 0 ? 'is-odd' : 'is-even';
+            ?>
+            <div class="np-spec-table__row <?php echo esc_attr($row_mod); ?>" role="row">
+                <div class="np-spec-table__cell np-spec-table__cell--label" role="rowheader">
+                    <?php echo esc_html($item[0]); ?>
+                </div>
+                <div class="np-spec-table__cell np-spec-table__cell--value" role="cell">
+                    <?php echo esc_html($item[1]); ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
 </div>
