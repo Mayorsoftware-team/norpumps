@@ -6,6 +6,7 @@ $default_page_attr = isset($default_page) ? intval($default_page) : 1;
 $show_all  = isset($atts['show_all']) && strtolower($atts['show_all'])==='yes';
 $orderby_value = isset($orderby_query) ? $orderby_query : 'menu_order title';
 if (!isset($filters_arr)) $filters_arr = [];
+$meta_filters = isset($meta_filters) && is_array($meta_filters) ? $meta_filters : [];
 $current_price_min = isset($requested_price_min) ? floatval($requested_price_min) : (isset($default_price_min) ? floatval($default_price_min) : 0);
 $current_price_max = isset($requested_price_max) ? floatval($requested_price_max) : (isset($default_price_max) ? floatval($default_price_max) : $current_price_min);
 $default_price_min_attr = isset($default_price_min) ? floatval($default_price_min) : $current_price_min;
@@ -13,7 +14,14 @@ $default_price_max_attr = isset($default_price_max) ? floatval($default_price_ma
 $has_price_filter = in_array('price', $filters_arr, true);
 $has_order_filter = in_array('order', $filters_arr, true);
 $has_cat_filter = in_array('cat', $filters_arr, true) && !empty($groups);
-$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter;
+$has_meta_filters = false;
+foreach ($meta_filters as $meta_filter_candidate){
+    if (!empty($meta_filter_candidate['options'])){
+        $has_meta_filters = true;
+        break;
+    }
+}
+$has_any_filter = $has_price_filter || $has_order_filter || $has_cat_filter || $has_meta_filters;
 $filters_element_id = 'np-filters-'.uniqid();
 $order_field_id = 'np-orderby-'.uniqid();
 ?>
@@ -66,6 +74,26 @@ if ($has_any_filter) {
             <button type="button" class="np-price-apply"><?php esc_html_e('Aplicar','norpumps'); ?></button>
           </div>
         </div>
+      <?php endif; ?>
+      <?php if ($has_meta_filters): ?>
+        <?php foreach ($meta_filters as $meta_filter):
+            if (empty($meta_filter['options'])){ continue; }
+            $meta_unit = isset($meta_filter['unit']) ? $meta_filter['unit'] : '';
+        ?>
+          <div class="np-filter np-filter--meta" data-meta-id="<?php echo esc_attr($meta_filter['id']); ?>" data-meta-key="<?php echo esc_attr($meta_filter['key']); ?>" data-meta-type="<?php echo esc_attr($meta_filter['type']); ?>"<?php if ($meta_unit !== ''): ?> data-meta-unit="<?php echo esc_attr($meta_unit); ?>"<?php endif; ?>>
+            <div class="np-filter__head"><?php echo esc_html(strtoupper($meta_filter['label'])); ?></div>
+            <div class="np-filter__body">
+              <?php if ($show_all): ?>
+                <label class="np-all"><input type="checkbox" class="np-all-toggle" checked> <?php esc_html_e('Todos','norpumps'); ?></label>
+              <?php endif; ?>
+              <div class="np-checklist np-meta-options" data-meta="<?php echo esc_attr($meta_filter['id']); ?>">
+                <?php foreach ($meta_filter['options'] as $option): ?>
+                  <label><input type="checkbox" value="<?php echo esc_attr($option['value']); ?>"> <?php echo esc_html($option['label']); ?></label>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          </div>
+        <?php endforeach; ?>
       <?php endif; ?>
       <?php if ($has_cat_filter): ?>
         <?php foreach ($groups as $g):
