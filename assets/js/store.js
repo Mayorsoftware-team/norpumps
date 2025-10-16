@@ -186,7 +186,12 @@ jQuery(function($){
     closeMobileFilters($root);
     $.post(NorpumpsStore.ajax_url, payload, function(resp){
       if (!resp || !resp.success) return;
-      $root.find('.js-np-grid').html(resp.data.html);
+      const $grid = $root.find('.js-np-grid');
+      $grid.html(resp.data.html);
+      const totalItems = Number(resp.data.total);
+      const isEmpty = isFiniteNumber(totalItems) ? totalItems < 1 : $.trim(resp.data.html || '') === '';
+      $grid.toggleClass('np-grid--empty', isEmpty);
+      $root.toggleClass('norpumps-store--empty', isEmpty);
       $root.find('.js-np-pagination').html(resp.data.pagination_html || '');
       if (resp.data.page){ setCurrentPage($root, resp.data.page); }
       if (resp.data.args && resp.data.args.limit){ setPerPage($root, resp.data.args.limit); }
