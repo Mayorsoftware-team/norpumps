@@ -127,6 +127,10 @@ jQuery(function($){
     if (range.max !== null){ data.max_price = range.max; }
     $root.find('.np-checklist[data-tax="product_cat"]').each(function(){
       const group = $(this).data('group');
+      const rootSlug = ($(this).data('root') || '').toString();
+      if (group && rootSlug){
+        data['catroot_'+group] = rootSlug;
+      }
       const vals = $(this).find('input:checked').map(function(){ return this.value; }).get();
       const allOn = $(this).closest('.np-filter__body').find('.np-all-toggle').is(':checked');
       if (group && vals.length && !allOn){

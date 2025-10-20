@@ -88,7 +88,7 @@ if ($has_any_filter) {
                 <?php if ($show_all): ?>
                   <label class="np-all"><input type="checkbox" class="np-all-toggle" checked> <?php esc_html_e('Todos','norpumps'); ?></label>
                 <?php endif; ?>
-                <div class="np-checklist" data-tax="product_cat" data-group="<?php echo esc_attr($g['slug']); ?>">
+                <div class="np-checklist" data-tax="product_cat" data-group="<?php echo esc_attr($g['slug']); ?>" data-root="<?php echo esc_attr($parent->slug); ?>">
                   <?php
                   // IMPORTANT: avoid function redeclare fatals in REST/editor
                   if (!function_exists('np_render_children_only')){
