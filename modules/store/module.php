@@ -235,13 +235,33 @@ class NorPumps_Modules_Store {
             $args['order'] = ($orderby === 'price-desc') ? 'DESC' : 'ASC';
         }
         $tax_query = ['relation'=>'AND'];
+        $cat_root_terms = [];
         foreach ($_REQUEST as $k=>$v){
+            if (strpos($k, 'catroot_') === 0 && !empty($v)){
+                $raw_values = is_array($v) ? $v : explode(',', (string)$v);
+                foreach ($raw_values as $raw_item){
+                    $slug = sanitize_title($raw_item);
+                    if ($slug !== ''){
+                        $cat_root_terms[] = $slug;
+                    }
+                }
+                continue;
+            }
             if (strpos($k,'cat_')===0 && !empty($v)){
                 $slugs = array_map('sanitize_title', array_filter(explode(',', $v)));
                 if ($slugs){
                     $tax_query[] = ['taxonomy'=>'product_cat','field'=>'slug','terms'=>$slugs,'include_children'=>true,'operator'=>'IN'];
                 }
             }
+        }
+        if (!empty($cat_root_terms)){
+            $tax_query[] = [
+                'taxonomy'=>'product_cat',
+                'field'=>'slug',
+                'terms'=>array_values(array_unique($cat_root_terms)),
+                'include_children'=>true,
+                'operator'=>'IN',
+            ];
         }
         $meta_query = [];
         if (function_exists('WC')){
